@@ -582,6 +582,10 @@ module.exports = {
   logMassPull,
   logAdminAction,
 
+  // Aliases for backward compatibility
+  logMemberJoin: logMemberJoinSecurity,
+  logMemberLeave: logMemberLeaveSecurity,
+
   // Dashboard & views
   showSecurityDashboard,
   showRecentLogs,

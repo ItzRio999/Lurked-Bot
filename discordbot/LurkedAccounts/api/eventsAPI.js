@@ -3,6 +3,7 @@ const router = express.Router();
 const { loadJson, saveJson, DATA_PATH } = require('../utils/fileManager');
 const { verifyAuth, verifyAdmin } = require('../middleware/firebaseAuth');
 const admin = require('firebase-admin');
+const { searchMoviePoster } = require('../utils/tmdb');
 
 /**
  * Map movie genre to icon and color theme for frontend
@@ -54,8 +55,12 @@ function formatEventDate(isoDate) {
 
   const eventDate = new Date(isoDate);
   const now = new Date();
-  const diffTime = eventDate - now;
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  // Compare calendar dates by normalizing to start of day
+  const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffTime = eventDay - today;
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
   // If in the past
   if (diffDays < 0) {
@@ -158,9 +163,13 @@ router.get('/api/events', async (req, res) => {
           status: 'scheduled',
           icon: theme.icon,
           color: theme.color,
+          posterUrl: movie.posterUrl || null,
+          posterUrlLarge: movie.posterUrlLarge || null,
+          posterUrlSmall: movie.posterUrlSmall || null,
           metadata: {
             addedBy: movie.added_by,
-            addedAt: movie.added_at
+            addedAt: movie.added_at,
+            tmdbId: movie.tmdbId || null
           }
         });
       }
@@ -277,12 +286,27 @@ router.post('/api/events', verifyAuth, verifyAdmin, async (req, res) => {
       data.movie_schedule = [];
     }
 
+    // Fetch movie poster from TMDb (non-blocking - don't fail if it errors)
+    let movieData = null;
+    try {
+      movieData = await searchMoviePoster(trimmedTitle);
+      if (movieData) {
+        console.log(`🎬 Found poster for "${trimmedTitle}": ${movieData.posterUrl}`);
+      }
+    } catch (tmdbError) {
+      console.warn('⚠️ Failed to fetch movie poster, continuing without it:', tmdbError.message);
+    }
+
     // Create new scheduled event
     const newEvent = {
       id: Date.now().toString(),
       title: trimmedTitle,
       date: parsedDate.toISOString(),
       genre: genre?.trim() || null,
+      posterUrl: movieData?.posterUrl || null,
+      posterUrlLarge: movieData?.posterUrlLarge || null,
+      posterUrlSmall: movieData?.posterUrlSmall || null,
+      tmdbId: movieData?.tmdbId || null,
       added_by: req.user.uid,
       added_at: new Date().toISOString()
     };
@@ -303,10 +327,15 @@ router.post('/api/events', verifyAuth, verifyAdmin, async (req, res) => {
         type: 'movie',
         title: trimmedTitle,
         date: newEvent.date,
+        dateFormatted: formatEventDate(newEvent.date),
+        description: buildEventDescription({ genre: newEvent.genre, status: 'scheduled' }),
         genre: newEvent.genre,
         status: 'scheduled',
         icon: theme.icon,
-        color: theme.color
+        color: theme.color,
+        posterUrl: newEvent.posterUrl,
+        posterUrlLarge: newEvent.posterUrlLarge,
+        posterUrlSmall: newEvent.posterUrlSmall
       });
       console.log(`🔔 WebSocket: Emitted movieScheduleAdded event for "${trimmedTitle}"`);
     }
@@ -331,7 +360,10 @@ router.post('/api/events', verifyAuth, verifyAdmin, async (req, res) => {
         ...newEvent,
         dateFormatted: formatEventDate(newEvent.date),
         description: buildEventDescription({ genre: newEvent.genre, status: 'scheduled' }),
-        ...mapGenreToTheme(newEvent.genre)
+        ...mapGenreToTheme(newEvent.genre),
+        posterUrl: newEvent.posterUrl,
+        posterUrlLarge: newEvent.posterUrlLarge,
+        posterUrlSmall: newEvent.posterUrlSmall
       },
       message: 'Event scheduled successfully'
     });

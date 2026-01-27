@@ -1,0 +1,174 @@
+{
+  "client_id": "YOUR_DISCORD_CLIENT_ID",
+  "guild_ids": [
+    "YOUR_GUILD_ID_1",
+    "YOUR_GUILD_ID_2"
+  ],
+  "owner_user_ids": [
+    123456789012345678
+  ],
+  "owner_role_ids": [
+    "YOUR_OWNER_ROLE_ID"
+  ],
+  "coowner_role_ids": [
+    "YOUR_COOWNER_ROLE_ID"
+  ],
+  "staff_role_ids": [
+    "YOUR_STAFF_ROLE_ID"
+  ],
+  "booster_role_id": "YOUR_BOOSTER_ROLE_ID",
+  "ticket_category_id": "YOUR_TICKET_CATEGORY_ID",
+  "ticket_log_channel_id": "YOUR_TICKET_LOG_CHANNEL_ID",
+  "welcome_channel_id": null,
+  "welcome_message": null,
+  "leave_channel_id": null,
+  "leave_message": null,
+  "audit_log_channel_id": "YOUR_AUDIT_LOG_CHANNEL_ID",
+  "log_messages": true,
+  "logo_url": "https://i.imgur.com/your_logo.png",
+  "ticket_panel": {
+    "title": "**Your Server Support**",
+    "description": "Click one of the buttons below to open a support ticket.",
+    "color": 16760025,
+    "footer": "Your Server Support",
+    "thumbnail": "https://i.imgur.com/your_logo.png",
+    "image": null,
+    "buttons": [
+      {
+        "id": "general",
+        "label": "General Support",
+        "emoji": "🔧",
+        "style": "Primary",
+        "description": "General questions and assistance"
+      },
+      {
+        "id": "Account",
+        "label": "Account Suggestion",
+        "emoji": "💡",
+        "style": "Primary",
+        "description": "Suggest new accounts"
+      },
+      {
+        "id": "bug",
+        "label": "Bug Report",
+        "emoji": "🐛",
+        "style": "Danger",
+        "description": "Report bugs or issues"
+      },
+      {
+        "id": "other",
+        "label": "Other",
+        "emoji": "📋",
+        "style": "Secondary",
+        "description": "Anything else"
+      }
+    ]
+  },
+  "roles_panel": {
+    "title": "Role Selection",
+    "description": "Click the buttons below to toggle notification roles.",
+    "color": 5793266,
+    "footer": "Click to toggle roles on/off",
+    "thumbnail": null,
+    "image": null,
+    "roles": [
+      {
+        "id": "announcements",
+        "label": "Announcements",
+        "emoji": "📢",
+        "style": "Primary",
+        "role_id": "YOUR_ANNOUNCEMENTS_ROLE_ID",
+        "description": "Server announcements"
+      },
+      {
+        "id": "drops",
+        "label": "Account Drops",
+        "emoji": "🎁",
+        "style": "Success",
+        "role_id": "YOUR_DROPS_ROLE_ID",
+        "description": "Account drop notifications"
+      },
+      {
+        "id": "movies",
+        "label": "Movie Nights",
+        "emoji": "🎬",
+        "style": "Secondary",
+        "role_id": "YOUR_MOVIES_ROLE_ID",
+        "description": "Movie night pings"
+      }
+    ]
+  },
+  "drops_channel_id": "YOUR_DROPS_CHANNEL_ID",
+  "team_role_id": "YOUR_TEAM_ROLE_ID",
+  "verify_role_id": "YOUR_VERIFY_ROLE_ID",
+  "automod": {
+    "enabled": true,
+    "spam": {
+      "enabled": true,
+      "message_limit": 5,
+      "time_window": 10000,
+      "action": "timeout",
+      "timeout_duration": 300000,
+      "ignore_roles": []
+    },
+    "caps": {
+      "enabled": false,
+      "percentage": 70,
+      "min_length": 10,
+      "action": "delete",
+      "ignore_roles": []
+    },
+    "links": {
+      "enabled": true,
+      "block_invites": true,
+      "whitelist": [],
+      "action": "delete",
+      "ignore_roles": []
+    },
+    "badwords": {
+      "enabled": true,
+      "words": [
+        "example_badword_1",
+        "example_badword_2"
+      ],
+      "action": "strike",
+      "ignore_roles": [],
+      "use_strike_system": true
+    },
+    "strikes": {
+      "strike_1_action": "timeout",
+      "strike_1_duration": 300000,
+      "strike_2_action": "timeout",
+      "strike_2_duration": 86400000,
+      "strike_3_action": "ban"
+    },
+    "log_channel_id": "YOUR_AUTOMOD_LOG_CHANNEL_ID",
+    "immune_roles": []
+  },
+  "autoclose_tickets": true,
+  "ticket_inactivity_hours": 24,
+  "ticket_ratings_channel_id": "YOUR_TICKET_RATINGS_CHANNEL_ID",
+  "verify_log_channel_id": "YOUR_VERIFY_LOG_CHANNEL_ID",
+  "verification": {
+    "enabled": true,
+    "min_account_age_days": 7,
+    "alt_detection_enabled": true,
+    "kick_on_fail": false,
+    "backup_on_leave": true,
+    "send_dm_on_join": true,
+    "panel_title": "Server Verification",
+    "panel_description": "Welcome! To access the server, you must complete verification.",
+    "panel_color": 5793266,
+    "use_oauth": true,
+    "ip_alt_detection": true,
+    "kick_on_deny": false
+  },
+  "verification_channel_id": "YOUR_VERIFICATION_CHANNEL_ID",
+  "oauth": {
+    "enabled": true,
+    "web_server_port": 3000,
+    "redirect_uri": "http://localhost:3000/auth/discord/callback",
+    "fallback_to_captcha": true,
+    "base_url": "http://localhost:3000"
+  }
+}

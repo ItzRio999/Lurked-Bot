@@ -79,6 +79,11 @@ const client = new Client({
 
 // Initialize Express API server for web uploads
 const app = express();
+
+// Trust proxy - required when behind Cloudflare Tunnel or reverse proxy
+// This allows express-rate-limit to correctly identify client IPs
+app.set('trust proxy', true);
+
 const httpServer = http.createServer(app);
 const API_PORT = process.env.API_PORT || 3002;
 const CORS_ORIGIN = process.env.API_CORS_ORIGIN || 'http://localhost:5173';

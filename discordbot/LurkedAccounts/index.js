@@ -206,6 +206,11 @@ client.on("clientReady", async () => {
   app.use(eventsAPI);
   console.log('✅ Events API routes loaded');
 
+  // Load Discord OAuth API routes
+  const discordOAuthAPI = require('./api/discordOAuthAPI');
+  app.use('/api/oauth', discordOAuthAPI);
+  console.log('✅ Discord OAuth API routes loaded');
+
   // Log all registered routes for debugging
   console.log('\n📍 Registered API routes:');
   if (app._router && app._router.stack) {

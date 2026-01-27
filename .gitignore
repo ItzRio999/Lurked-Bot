@@ -79,3 +79,7 @@ data.json
 
 # dataconnect generated files
 .dataconnect
+
+# Claude Code local settings
+.claude/settings.local.json
+**/.claude/settings.local.json

@@ -83,5 +83,16 @@ data.json
 # Claude Code local settings
 .claude/settings.local.json
 **/.claude/settings.local.json
-src/components/sections/EventsPage.jsx
+
+# Frontend files (hosted on spaceship.com, not on GitHub)
+src/
+index.html
 vite.config.js
+package.json
+package-lock.json
+.firebaserc
+firebase.json
+firestore.indexes.json
+firestore.rules
+icons/
+CLAUDE.md

@@ -525,11 +525,18 @@ function formatDuration(ms) {
 }
 
 function logTicketMessage(message, data, dataPath) {
-  if (!data.tickets) {
+  if (!data || typeof data !== "object") {
+    return;
+  }
+  if (!data.tickets || typeof data.tickets !== "object") {
     data.tickets = {};
   }
-  if (data.tickets[message.channel.id]) {
-    data.tickets[message.channel.id].messages.push({
+  const ticket = data.tickets[message.channel.id];
+  if (ticket) {
+    if (!Array.isArray(ticket.messages)) {
+      ticket.messages = [];
+    }
+    ticket.messages.push({
       author: message.author.tag,
       content: message.content,
       timestamp: new Date().toISOString(),

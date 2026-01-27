@@ -83,3 +83,5 @@ data.json
 # Claude Code local settings
 .claude/settings.local.json
 **/.claude/settings.local.json
+src/components/sections/EventsPage.jsx
+vite.config.js

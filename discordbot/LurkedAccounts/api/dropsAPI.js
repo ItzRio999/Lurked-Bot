@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const router = express.Router();
 const { verifyAuth, verifyAdmin } = require('../middleware/firebaseAuth');
+const { uploadLimiter, deleteLimiter } = require('../middleware/rateLimiter');
 
 // Temporary upload directory
 const DROPS_DIR = path.join(__dirname, '..', 'drops');
@@ -39,7 +40,7 @@ const upload = multer({
 });
 
 // POST /api/upload-drop - Upload drop to Discord channel
-router.post('/upload-drop', verifyAuth, verifyAdmin, upload.single('file'), async (req, res) => {
+router.post('/upload-drop', uploadLimiter, verifyAuth, verifyAdmin, upload.single('file'), async (req, res) => {
   try {
     let { title, description, type } = req.body;
     const file = req.file;
@@ -323,7 +324,7 @@ router.get('/download/:dropId', async (req, res) => {
 });
 
 // DELETE /api/drop/:dropId - Delete drop from Discord
-router.delete('/drop/:dropId', verifyAuth, verifyAdmin, async (req, res) => {
+router.delete('/drop/:dropId', deleteLimiter, verifyAuth, verifyAdmin, async (req, res) => {
   try {
     const { dropId } = req.params; // Discord message ID
     const client = req.app.locals.client;

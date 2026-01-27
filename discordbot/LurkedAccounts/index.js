@@ -10,6 +10,8 @@ const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
+const { securityHeaders } = require('./middleware/securityHeaders');
+const { generalLimiter } = require('./middleware/rateLimiter');
 
 // Lazy-load feature modules (loaded on-demand for better memory efficiency on Pi)
 let ticketsModule, staffTrackingModule, boostTrackingModule;
@@ -96,6 +98,10 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+
+// Security middleware
+app.use(securityHeaders); // Add HTTP security headers
+app.use(generalLimiter);  // Rate limiting for all routes
 
 // Make Discord client, config, and Socket.IO available to routes
 app.locals.client = client;

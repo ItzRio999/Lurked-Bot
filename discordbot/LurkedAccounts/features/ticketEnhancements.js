@@ -568,7 +568,6 @@ async function setRatingsChannel(interaction, config, configPath) {
   const channel = interaction.options.getChannel("channel", true);
 
   config.ticket_ratings_channel_id = channel.id;
-  const { saveJson } = require("../utils/fileManager");
   saveJson(configPath, config);
 
   const embed = new EmbedBuilder()

@@ -10,6 +10,15 @@ const { saveJson } = require("../utils/fileManager");
 // Movie announce
 async function announceMovie(interaction, config, data, dataPath, io) {
   const title = interaction.options.getString("title", true);
+
+  // Validate title length (Discord embed title limit is 256 characters)
+  if (title.length > 256) {
+    return interaction.reply({
+      content: "❌ Movie title is too long! Please use a title under 256 characters.",
+      flags: MessageFlags.Ephemeral,
+    });
+  }
+
   const voiceChannel = interaction.options.getChannel("voice");
   const time = interaction.options.getString("time");
   const genre = interaction.options.getString("genre");

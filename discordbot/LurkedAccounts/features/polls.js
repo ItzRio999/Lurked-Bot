@@ -51,6 +51,7 @@ async function createPoll(interaction, data, dataPath) {
     await message.react(emojis[i]).catch(console.error);
   }
 
+  if (!data.polls) data.polls = {};
   data.polls[message.id] = {
     question,
     options,

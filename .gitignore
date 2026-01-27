@@ -96,3 +96,6 @@ firestore.indexes.json
 firestore.rules
 icons/
 CLAUDE.md
+discordbot/LurkedAccounts/.env.example
+.env.example
+dist.zip

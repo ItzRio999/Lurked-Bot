@@ -19,6 +19,17 @@ const REQUIRED_GUILD_ID = "1451251793303703614";
 router.get("/discord/authorize", authLimiter, verifyAuth, async (req, res) => {
   try {
     const firebaseUid = req.user.uid;
+    const redirectUri =
+      process.env.DISCORD_REDIRECT_URI ||
+      process.env.OAUTH_REDIRECT_URI ||
+      req.app.locals.config?.oauth?.redirect_uri;
+
+    if (!redirectUri) {
+      return res.status(500).json({
+        success: false,
+        error: "Missing Discord OAuth redirect URI",
+      });
+    }
 
     // Generate state token for CSRF protection
     const state = createState(firebaseUid);
@@ -26,7 +37,7 @@ router.get("/discord/authorize", authLimiter, verifyAuth, async (req, res) => {
     // Build Discord OAuth authorization URL
     const params = new URLSearchParams({
       client_id: process.env.DISCORD_CLIENT_ID || req.app.locals.config.client_id,
-      redirect_uri: process.env.DISCORD_REDIRECT_URI,
+      redirect_uri: redirectUri,
       response_type: "code",
       scope: "identify guilds",
       state: state,
@@ -54,6 +65,10 @@ router.get("/discord/authorize", authLimiter, verifyAuth, async (req, res) => {
 router.get("/discord/callback", async (req, res) => {
   const { code, state, error } = req.query;
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const redirectUri =
+    process.env.DISCORD_REDIRECT_URI ||
+    process.env.OAUTH_REDIRECT_URI ||
+    req.app.locals.config?.oauth?.redirect_uri;
 
   try {
     // Handle user denial
@@ -82,6 +97,12 @@ router.get("/discord/callback", async (req, res) => {
     const firebaseUid = stateValidation.firebaseUid;
 
     // Exchange code for access token
+    if (!redirectUri) {
+      return res.redirect(
+        `${frontendUrl}/#settings?discord_linked=error&reason=server_error`
+      );
+    }
+
     const tokenResponse = await fetch(`${DISCORD_API_BASE}/oauth2/token`, {
       method: "POST",
       headers: {
@@ -92,7 +113,7 @@ router.get("/discord/callback", async (req, res) => {
         client_secret: process.env.DISCORD_CLIENT_SECRET,
         grant_type: "authorization_code",
         code: code,
-        redirect_uri: process.env.DISCORD_REDIRECT_URI,
+        redirect_uri: redirectUri,
       }),
     });
 

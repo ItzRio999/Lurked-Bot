@@ -105,6 +105,10 @@ async function createTicketFromButton(interaction, category, config, data, dataP
     return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 
+  if (!data.tickets) {
+    data.tickets = {};
+  }
+
   // Check if user already has an open ticket
   const existingTicket = Object.values(data.tickets || {}).find(
     t => t.user_id === interaction.user.id && !t.closed
@@ -521,6 +525,9 @@ function formatDuration(ms) {
 }
 
 function logTicketMessage(message, data, dataPath) {
+  if (!data.tickets) {
+    data.tickets = {};
+  }
   if (data.tickets[message.channel.id]) {
     data.tickets[message.channel.id].messages.push({
       author: message.author.tag,

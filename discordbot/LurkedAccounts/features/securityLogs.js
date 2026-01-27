@@ -585,6 +585,7 @@ module.exports = {
   // Aliases for backward compatibility
   logMemberJoin: logMemberJoinSecurity,
   logMemberLeave: logMemberLeaveSecurity,
+  logVerification: logVerificationAttempt,
 
   // Dashboard & views
   showSecurityDashboard,

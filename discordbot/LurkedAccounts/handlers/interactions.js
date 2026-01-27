@@ -76,8 +76,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
     }
 
     if (interaction.customId.startsWith("verify_answer_")) {
-      const answerIndex = parseInt(interaction.customId.replace("verify_answer_", ""));
-      return handleVerificationAnswer(interaction, answerIndex, config, data, dataPath);
+      return handleVerificationAnswer(interaction, config, data, dataPath);
     }
 
     // Security dashboard buttons

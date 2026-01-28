@@ -601,6 +601,94 @@ async function createMoviePoll(interaction, data, dataPath) {
   await interaction.reply({ embeds: [successEmbed], flags: MessageFlags.Ephemeral });
 }
 
+// Set Event Live Status
+async function setEventLive(interaction, data, dataPath, io) {
+  const eventNumber = interaction.options.getInteger("eventnumber");
+  const isLive = interaction.options.getBoolean("live");
+  const joinUrl = interaction.options.getString("joinurl");
+
+  // Validate movie_schedule exists
+  if (!data.movie_schedule || !Array.isArray(data.movie_schedule)) {
+    return interaction.reply({
+      content: "❌ No events scheduled. Use `/movie schedule` to add events first.",
+      flags: MessageFlags.Ephemeral,
+    });
+  }
+
+  // Check if event number is valid
+  if (eventNumber > data.movie_schedule.length) {
+    return interaction.reply({
+      content: `❌ Invalid event number. There are only ${data.movie_schedule.length} events scheduled. Use \`/movie upcoming\` to see the list.`,
+      flags: MessageFlags.Ephemeral,
+    });
+  }
+
+  // Get event by index (eventNumber - 1)
+  const event = data.movie_schedule[eventNumber - 1];
+
+  // If going live, validate joinUrl is provided and valid
+  if (isLive) {
+    if (!joinUrl) {
+      return interaction.reply({
+        content: "❌ You must provide a join URL when setting an event live.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
+    // Validate URL format (Discord invite or HTTPS)
+    const isDiscordInvite = joinUrl.includes('discord.gg/') || joinUrl.includes('discord.com/invite/');
+    const isHttpsUrl = joinUrl.startsWith('https://');
+
+    if (!isDiscordInvite && !isHttpsUrl) {
+      return interaction.reply({
+        content: "❌ Invalid URL. Must be a Discord invite (discord.gg/...) or an HTTPS URL.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
+    // Set event live
+    event.isLive = true;
+    event.liveJoinUrl = joinUrl;
+    event.liveStartedAt = new Date().toISOString();
+    event.liveStartedBy = interaction.user.id;
+  } else {
+    // Set event not live
+    event.isLive = false;
+    event.liveJoinUrl = null;
+    event.liveStartedAt = null;
+    event.liveStartedBy = null;
+  }
+
+  // Save changes to data.json
+  saveJson(dataPath, data);
+
+  // Emit WebSocket event for real-time frontend update
+  if (io) {
+    io.emit('eventLiveStatusChanged', {
+      id: event.id,
+      type: 'movie',
+      title: event.title,
+      date: event.date,
+      isLive: event.isLive,
+      liveJoinUrl: event.liveJoinUrl,
+      liveStartedAt: event.liveStartedAt,
+    });
+  }
+
+  // Create success embed
+  const successEmbed = new EmbedBuilder()
+    .setTitle(isLive ? "🔴 Event Set Live" : "Event Set Not Live")
+    .setDescription(
+      isLive
+        ? `**${event.title}** is now LIVE!\n\n🔗 Join URL: ${joinUrl}`
+        : `**${event.title}** is no longer live.`
+    )
+    .setColor(isLive ? 0xFF6B6B : 0x95A5A6)
+    .setTimestamp();
+
+  await interaction.reply({ embeds: [successEmbed] });
+}
+
 module.exports = {
   announceMovie,
   handleMovieButton,
@@ -610,4 +698,5 @@ module.exports = {
   showStats,
   showVolumeHelp,
   createMoviePoll,
+  setEventLive,
 };

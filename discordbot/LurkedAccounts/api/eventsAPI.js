@@ -126,6 +126,31 @@ function buildEventDescription(event) {
   return parts.length > 0 ? parts.join(' • ') : 'Movie night event';
 }
 
+/**
+ * Validate join URL for live events
+ */
+function validateJoinUrl(url) {
+  if (!url || typeof url !== 'string') {
+    return { valid: false, error: 'URL is required' };
+  }
+
+  // Allow Discord invites
+  if (url.includes('discord.gg/') || url.includes('discord.com/invite/')) {
+    return { valid: true };
+  }
+
+  // Allow HTTPS URLs
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === 'https:') {
+      return { valid: true };
+    }
+    return { valid: false, error: 'URL must use HTTPS protocol' };
+  } catch (e) {
+    return { valid: false, error: 'Invalid URL format' };
+  }
+}
+
 // GET /api/events - Fetch all events (movies for now, extensible for other event types)
 router.get('/api/events', async (req, res) => {
   try {
@@ -166,6 +191,9 @@ router.get('/api/events', async (req, res) => {
           posterUrl: movie.posterUrl || null,
           posterUrlLarge: movie.posterUrlLarge || null,
           posterUrlSmall: movie.posterUrlSmall || null,
+          isLive: movie.isLive || false,
+          liveJoinUrl: movie.liveJoinUrl || null,
+          liveStartedAt: movie.liveStartedAt || null,
           metadata: {
             addedBy: movie.added_by,
             addedAt: movie.added_at,
@@ -203,6 +231,9 @@ router.get('/api/events', async (req, res) => {
           status: 'active',
           icon: theme.icon,
           color: theme.color,
+          isLive: movie.isLive || false,
+          liveJoinUrl: movie.liveJoinUrl || null,
+          liveStartedAt: movie.liveStartedAt || null,
           metadata: {
             messageId: movie.message_id,
             channelId: movie.channel_id,
@@ -458,6 +489,158 @@ router.delete('/api/events/:eventId', verifyAuth, verifyAdmin, async (req, res) 
     res.status(500).json({
       success: false,
       error: 'Failed to delete event'
+    });
+  }
+});
+
+// PATCH /api/events/:eventId/live - Set event live status (Admin only)
+router.patch('/api/events/:eventId/live', verifyAuth, verifyAdmin, async (req, res) => {
+  console.log(`🔍 PATCH request received for event ID: ${req.params.eventId}`);
+  try {
+    const { eventId } = req.params;
+    const { isLive, liveJoinUrl } = req.body;
+    const io = req.app.locals.io;
+
+    // Validate eventId
+    if (!eventId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Event ID is required'
+      });
+    }
+
+    // Validate isLive is a boolean
+    if (typeof isLive !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        error: 'isLive must be a boolean value'
+      });
+    }
+
+    // If going live, validate the join URL
+    if (isLive) {
+      const urlValidation = validateJoinUrl(liveJoinUrl);
+      if (!urlValidation.valid) {
+        return res.status(400).json({
+          success: false,
+          error: urlValidation.error || 'Invalid join URL'
+        });
+      }
+    }
+
+    // Load current data
+    const data = loadJson(DATA_PATH, {});
+
+    let event = null;
+    let eventLocation = null;
+
+    // Try to find event in movie_schedule
+    if (Array.isArray(data.movie_schedule)) {
+      const scheduleIndex = data.movie_schedule.findIndex(e => e.id === eventId);
+      if (scheduleIndex !== -1) {
+        event = data.movie_schedule[scheduleIndex];
+        eventLocation = { array: 'movie_schedule', index: scheduleIndex };
+      }
+    }
+
+    // If not found, try movies array
+    if (!event && Array.isArray(data.movies)) {
+      const moviesIndex = data.movies.findIndex(e => e.message_id === eventId);
+      if (moviesIndex !== -1) {
+        event = data.movies[moviesIndex];
+        eventLocation = { array: 'movies', index: moviesIndex };
+      }
+    }
+
+    // Event not found
+    if (!event || !eventLocation) {
+      return res.status(404).json({
+        success: false,
+        error: 'Event not found'
+      });
+    }
+
+    // Update live status
+    if (isLive) {
+      event.isLive = true;
+      event.liveJoinUrl = liveJoinUrl;
+      event.liveStartedAt = new Date().toISOString();
+      event.liveStartedBy = req.user.uid;
+    } else {
+      event.isLive = false;
+      event.liveJoinUrl = null;
+      event.liveStartedAt = null;
+      event.liveStartedBy = null;
+    }
+
+    // Update the event in the data structure
+    if (eventLocation.array === 'movie_schedule') {
+      data.movie_schedule[eventLocation.index] = event;
+    } else {
+      data.movies[eventLocation.index] = event;
+    }
+
+    // Save to data.json
+    saveJson(DATA_PATH, data);
+
+    console.log(`✅ Event live status updated: "${event.title}" → ${isLive ? 'LIVE' : 'NOT LIVE'} by ${req.user.email}`);
+
+    // Build full event object for WebSocket
+    const theme = mapGenreToTheme(event.genre);
+    const fullEventData = {
+      id: eventId,
+      type: 'movie',
+      title: event.title,
+      date: event.date || event.announced_at,
+      dateFormatted: event.time || formatEventDate(event.date || event.announced_at),
+      description: buildEventDescription({
+        genre: event.genre,
+        runtime: event.runtime,
+        status: eventLocation.array === 'movie_schedule' ? 'scheduled' : 'active'
+      }),
+      genre: event.genre,
+      status: eventLocation.array === 'movie_schedule' ? 'scheduled' : 'active',
+      icon: theme.icon,
+      color: theme.color,
+      posterUrl: event.posterUrl || null,
+      isLive: event.isLive,
+      liveJoinUrl: event.liveJoinUrl,
+      liveStartedAt: event.liveStartedAt
+    };
+
+    // Emit WebSocket event for real-time update
+    if (io) {
+      io.emit('eventLiveStatusChanged', fullEventData);
+      console.log(`🔔 WebSocket: Emitted eventLiveStatusChanged event for "${event.title}"`);
+    }
+
+    // Log admin action to Firestore
+    try {
+      await admin.firestore().collection('adminLogs').add({
+        action: isLive ? 'Set event live' : 'Set event not live',
+        details: isLive
+          ? `Set "${event.title}" as LIVE with join URL: ${liveJoinUrl}`
+          : `Set "${event.title}" as no longer live`,
+        adminEmail: req.user.email || 'Unknown',
+        timestamp: admin.firestore.FieldValue.serverTimestamp()
+      });
+    } catch (logError) {
+      console.error('Failed to log admin action:', logError);
+      // Don't fail the request if logging fails
+    }
+
+    // Return success with updated event
+    res.json({
+      success: true,
+      event: fullEventData,
+      message: isLive ? 'Event is now live' : 'Event is no longer live'
+    });
+
+  } catch (error) {
+    console.error('❌ Error updating event live status:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update event live status'
     });
   }
 });

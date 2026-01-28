@@ -16,7 +16,7 @@ const { showBoostReport, showBoostLog, showCurrentBoosters } = require("../featu
 const { createPoll } = require("../features/polls");
 const { nukeMessages, timeoutUser, untimeoutUser, kickUser, banUser, softbanUser, unbanUser } = require("../features/moderation");
 const { createRolesPanel, handleRoleButton, getRolesPanelConfig } = require("../features/rolesPanel");
-const { announceMovie, handleMovieButton, showSchedule, addToSchedule, removeFromSchedule, showStats, showVolumeHelp, createMoviePoll } = require("../features/movieNight");
+const { announceMovie, handleMovieButton, showSchedule, addToSchedule, removeFromSchedule, showStats, showVolumeHelp, createMoviePoll, setEventLive } = require("../features/movieNight");
 const { startGiveaway, handleGiveawayButton, endGiveaway, rerollGiveaway, listGiveaways } = require("../features/giveaways");
 const { configureAutomod } = require("../features/automod");
 const { setTicketPriority, addTicketNote, viewTicketNotes, showRatingModal, handleTicketRating, toggleAutoClose, viewTicketStats, renameTicket, setRatingsChannel, addUserToTicket, removeUserFromTicket, listTicketParticipants } = require("../features/ticketEnhancements");
@@ -675,6 +675,11 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
     if (subcommand === "stats") {
       return showStats(interaction, data);
     }
+  }
+
+  // Set Event Live
+  if (name === "seteventlive") {
+    return setEventLive(interaction, data, dataPath, io);
   }
 
   // Giveaway System

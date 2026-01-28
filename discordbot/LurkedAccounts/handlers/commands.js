@@ -293,6 +293,30 @@ const commands = [
         .setDescription("Show movie night statistics")
     ),
 
+  // Set Event Live Status
+  new SlashCommandBuilder()
+    .setName("seteventlive")
+    .setDescription("Set an event's live status (admin only)")
+    .addIntegerOption(opt =>
+      opt
+        .setName("eventnumber")
+        .setDescription("Event number from scheduled events list")
+        .setRequired(true)
+        .setMinValue(1)
+    )
+    .addBooleanOption(opt =>
+      opt
+        .setName("live")
+        .setDescription("Set event live (true) or not live (false)")
+        .setRequired(true)
+    )
+    .addStringOption(opt =>
+      opt
+        .setName("joinurl")
+        .setDescription("Discord invite link or custom URL (required when going live)")
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
   // ============== MODERATION ==============
   new SlashCommandBuilder()
     .setName("nuke")

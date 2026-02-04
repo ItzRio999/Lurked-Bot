@@ -199,7 +199,7 @@ router.get('/stats/tickets', verifyAuth, verifyAdmin, async (req, res) => {
     res.json({
       success: true,
       days: days,
-      ticketStats: ticketStats
+      data: ticketStats
     });
 
   } catch (error) {
@@ -242,7 +242,7 @@ router.get('/stats/verification', verifyAuth, verifyAdmin, async (req, res) => {
     res.json({
       success: true,
       days: days,
-      verificationStats: verificationStats
+      data: verificationStats
     });
 
   } catch (error) {

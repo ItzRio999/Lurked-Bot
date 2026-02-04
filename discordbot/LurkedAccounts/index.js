@@ -108,9 +108,10 @@ app.use(express.json());
 app.use(securityHeaders); // Add HTTP security headers
 app.use(generalLimiter);  // Rate limiting for all routes
 
-// Make Discord client, config, and Socket.IO available to routes
+// Make Discord client, config, data, and Socket.IO available to routes
 app.locals.client = client;
 app.locals.config = config;
+app.locals.data = data;
 app.locals.io = io;
 
 // Also store io in client for easy access in event handlers

@@ -77,6 +77,159 @@ router.get('/tickets', verifyAuth, verifyAdmin, async (req, res) => {
   }
 });
 
+// GET /api/bot/tickets/:ticketId/messages - Get messages from a ticket (admin only)
+router.get('/tickets/:ticketId/messages', verifyAuth, verifyAdmin, async (req, res) => {
+  try {
+    const { ticketId } = req.params;
+    const client = req.app.locals.client;
+    const limit = parseInt(req.query.limit) || 50;
+
+    if (!client || !client.isReady()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Discord bot not ready'
+      });
+    }
+
+    // Get the ticket channel
+    const ticketChannel = client.channels.cache.get(ticketId);
+    if (!ticketChannel) {
+      return res.status(404).json({
+        success: false,
+        error: 'Ticket channel not found'
+      });
+    }
+
+    // Fetch messages from the channel
+    const messages = await ticketChannel.messages.fetch({ limit });
+
+    // Format messages for frontend
+    const formattedMessages = messages.map(msg => ({
+      id: msg.id,
+      content: msg.content,
+      author: {
+        id: msg.author.id,
+        username: msg.author.username,
+        discriminator: msg.author.discriminator,
+        avatar: msg.author.displayAvatarURL(),
+        bot: msg.author.bot
+      },
+      timestamp: msg.createdTimestamp,
+      embeds: msg.embeds.length > 0 ? msg.embeds.map(e => ({
+        title: e.title,
+        description: e.description,
+        color: e.color,
+        fields: e.fields
+      })) : [],
+      attachments: msg.attachments.size > 0 ? msg.attachments.map(a => ({
+        name: a.name,
+        url: a.url,
+        size: a.size
+      })) : []
+    })).reverse(); // Reverse to show oldest first
+
+    res.json({
+      success: true,
+      data: {
+        messages: formattedMessages,
+        channelName: ticketChannel.name
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching ticket messages:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch ticket messages'
+    });
+  }
+});
+
+// POST /api/bot/tickets/:ticketId/messages - Send a message to a ticket (admin only)
+router.post('/tickets/:ticketId/messages', verifyAuth, verifyAdmin, async (req, res) => {
+  try {
+    const { ticketId } = req.params;
+    const { message } = req.body;
+    const client = req.app.locals.client;
+
+    if (!message || message.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Message content is required'
+      });
+    }
+
+    if (message.length > 2000) {
+      return res.status(400).json({
+        success: false,
+        error: 'Message is too long (max 2000 characters)'
+      });
+    }
+
+    if (!client || !client.isReady()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Discord bot not ready'
+      });
+    }
+
+    // Get the ticket channel
+    const ticketChannel = client.channels.cache.get(ticketId);
+    if (!ticketChannel) {
+      return res.status(404).json({
+        success: false,
+        error: 'Ticket channel not found'
+      });
+    }
+
+    // Send the message
+    const sentMessage = await ticketChannel.send({
+      content: message,
+      embeds: [{
+        color: 0x8B5CF6,
+        footer: {
+          text: `Sent by ${req.user.email} via Dashboard`
+        },
+        timestamp: new Date().toISOString()
+      }]
+    });
+
+    // Format the sent message for response
+    const formattedMessage = {
+      id: sentMessage.id,
+      content: sentMessage.content,
+      author: {
+        id: sentMessage.author.id,
+        username: sentMessage.author.username,
+        discriminator: sentMessage.author.discriminator,
+        avatar: sentMessage.author.displayAvatarURL(),
+        bot: sentMessage.author.bot
+      },
+      timestamp: sentMessage.createdTimestamp,
+      embeds: sentMessage.embeds.map(e => ({
+        title: e.title,
+        description: e.description,
+        color: e.color,
+        footer: e.footer
+      }))
+    };
+
+    res.json({
+      success: true,
+      data: {
+        message: formattedMessage
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error sending ticket message:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to send message'
+    });
+  }
+});
+
 // POST /api/bot/tickets/:ticketId/close - Close a ticket (admin only)
 router.post('/tickets/:ticketId/close', verifyAuth, verifyAdmin, async (req, res) => {
   try {

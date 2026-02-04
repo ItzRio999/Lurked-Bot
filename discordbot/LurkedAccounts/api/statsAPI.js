@@ -50,6 +50,83 @@ function processStaffActivity(staffActivity, days) {
   return staffData.sort((a, b) => b.totalMessages - a.totalMessages);
 }
 
+// Helper function to process verification data
+function processVerificationData(data, days) {
+  if (!data || !data.security_logs) {
+    return {
+      totalAttempts: 0,
+      successful: 0,
+      failed: 0,
+      successRate: 0,
+      failureReasons: {
+        accountTooNew: 0,
+        altDetected: 0,
+        captchaFailed: 0,
+        other: 0
+      }
+    };
+  }
+
+  const now = new Date();
+  const cutoffDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+
+  // Filter security logs for verification events within date range
+  const verificationLogs = data.security_logs.filter(log => {
+    const logDate = new Date(log.timestamp);
+    return logDate >= cutoffDate && (
+      log.type === 'verify_success' ||
+      log.type === 'verify_fail' ||
+      log.type === 'account_too_new' ||
+      log.type === 'verify_timeout'
+    );
+  });
+
+  let successful = 0;
+  let failed = 0;
+  let accountTooNew = 0;
+  let altDetected = 0;
+  let captchaFailed = 0;
+  let other = 0;
+
+  verificationLogs.forEach(log => {
+    if (log.type === 'verify_success') {
+      successful++;
+    } else if (log.type === 'verify_fail') {
+      failed++;
+      // Check failure reason from details
+      if (log.details?.reason === 'captcha') {
+        captchaFailed++;
+      } else if (log.details?.reason === 'alt') {
+        altDetected++;
+      } else {
+        other++;
+      }
+    } else if (log.type === 'account_too_new') {
+      failed++;
+      accountTooNew++;
+    } else if (log.type === 'verify_timeout') {
+      failed++;
+      other++;
+    }
+  });
+
+  const totalAttempts = successful + failed;
+  const successRate = totalAttempts > 0 ? (successful / totalAttempts) * 100 : 0;
+
+  return {
+    totalAttempts,
+    successful,
+    failed,
+    successRate: Math.round(successRate * 10) / 10, // Round to 1 decimal place
+    failureReasons: {
+      accountTooNew,
+      altDetected,
+      captchaFailed,
+      other
+    }
+  };
+}
+
 // Helper function to process ticket data
 function processTicketData(data, days) {
   if (!data || !data.tickets) {
@@ -224,20 +301,7 @@ router.get('/stats/verification', verifyAuth, verifyAdmin, async (req, res) => {
       });
     }
 
-    // Placeholder for verification stats
-    // This would need to be implemented based on actual verification logging
-    const verificationStats = {
-      totalAttempts: 0,
-      successful: 0,
-      failed: 0,
-      successRate: 0,
-      failureReasons: {
-        accountTooNew: 0,
-        altDetected: 0,
-        captchaFailed: 0,
-        other: 0
-      }
-    };
+    const verificationStats = processVerificationData(data, days);
 
     res.json({
       success: true,

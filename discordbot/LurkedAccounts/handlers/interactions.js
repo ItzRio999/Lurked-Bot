@@ -23,12 +23,19 @@ const { setTicketPriority, addTicketNote, viewTicketNotes, showRatingModal, hand
 const { createVerificationPanel, startVerification, handleVerificationAnswer, showVerificationStats, configureVerification, setVerificationChannel, manualVerify, unverifyUser } = require("../features/verification");
 const { showSecurityDashboard, showRecentLogs } = require("../features/securityLogs");
 const { createStatCounter, removeStatCounter, updateStatCounters, updateCustomValue, setEnabled, STAT_TYPES } = require("../features/statCounters");
+const { showEmbedModal, handleEmbedSubmit, showAdvancedEmbedModal, handleAdvancedEmbedSubmit } = require("../features/embedCreator");
 
 async function handleInteraction(interaction, config, data, configPath, dataPath, io) {
   // Handle modal submissions
   if (interaction.isModalSubmit()) {
     if (interaction.customId.startsWith("ticket_rating_modal_")) {
       return handleTicketRating(interaction, data, dataPath, config);
+    }
+    if (interaction.customId.startsWith("embed_create_")) {
+      return handleEmbedSubmit(interaction, config);
+    }
+    if (interaction.customId.startsWith("embed_advanced_")) {
+      return handleAdvancedEmbedSubmit(interaction, config);
     }
     return;
   }
@@ -196,6 +203,107 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
       );
       return interaction.reply({ embeds: [embed] });
     }
+  }
+
+  // ============== USERINFO COMMAND (accessible to verified users) ==============
+  if (name === "userinfo") {
+    // Check if user has the required role (1451251793303703616)
+    const hasRequiredRole = member.roles.cache.has("1451251793303703616");
+
+    if (!hasRequiredRole) {
+      const embed = addLogo(
+        new EmbedBuilder()
+          .setDescription("❌ You need to be verified to use this command!")
+          .setColor(0xED4245),
+        config
+      );
+      return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+    }
+
+    const targetUser = interaction.options.getUser("user") || interaction.user;
+    const targetMember = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
+
+    if (!targetMember) {
+      const embed = addLogo(
+        new EmbedBuilder()
+          .setDescription("❌ User not found in this server!")
+          .setColor(0xED4245),
+        config
+      );
+      return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+    }
+
+    // Get user's roles (excluding @everyone)
+    const roles = targetMember.roles.cache
+      .filter(role => role.id !== interaction.guild.id)
+      .sort((a, b) => b.position - a.position)
+      .map(role => role.toString())
+      .slice(0, 20); // Limit to 20 roles to avoid embed limits
+
+    // Calculate account age
+    const accountCreated = Math.floor(targetUser.createdTimestamp / 1000);
+    const joinedServer = Math.floor(targetMember.joinedTimestamp / 1000);
+    const accountAgeDays = Math.floor((Date.now() - targetUser.createdTimestamp) / (1000 * 60 * 60 * 24));
+    const serverAgeDays = Math.floor((Date.now() - targetMember.joinedTimestamp) / (1000 * 60 * 60 * 24));
+
+    // Get user's permissions
+    const keyPermissions = [];
+    if (targetMember.permissions.has(PermissionFlagsBits.Administrator)) keyPermissions.push("Administrator");
+    if (targetMember.permissions.has(PermissionFlagsBits.ManageGuild)) keyPermissions.push("Manage Server");
+    if (targetMember.permissions.has(PermissionFlagsBits.ManageChannels)) keyPermissions.push("Manage Channels");
+    if (targetMember.permissions.has(PermissionFlagsBits.ManageRoles)) keyPermissions.push("Manage Roles");
+    if (targetMember.permissions.has(PermissionFlagsBits.BanMembers)) keyPermissions.push("Ban Members");
+    if (targetMember.permissions.has(PermissionFlagsBits.KickMembers)) keyPermissions.push("Kick Members");
+
+    // Get boost status
+    const boostStatus = targetMember.premiumSince
+      ? `✨ Boosting since <t:${Math.floor(targetMember.premiumSinceTimestamp / 1000)}:R>`
+      : "Not boosting";
+
+    // Get user status/activity
+    const presence = targetMember.presence;
+    const statusEmojis = {
+      online: "🟢",
+      idle: "🟡",
+      dnd: "🔴",
+      offline: "⚫"
+    };
+    const statusText = presence ? `${statusEmojis[presence.status] || "⚫"} ${presence.status.charAt(0).toUpperCase() + presence.status.slice(1)}` : "⚫ Offline";
+
+    const embed = new EmbedBuilder()
+      .setTitle(`User Information - ${targetUser.tag}`)
+      .setColor(targetMember.displayHexColor || 0x5865F2)
+      .setThumbnail(targetUser.displayAvatarURL({ dynamic: true, size: 256 }))
+      .addFields(
+        { name: "Username", value: targetUser.username, inline: true },
+        { name: "Display Name", value: targetMember.displayName, inline: true },
+        { name: "User ID", value: `\`${targetUser.id}\``, inline: true },
+        { name: "Account Created", value: `<t:${accountCreated}:F>\n<t:${accountCreated}:R> (${accountAgeDays} days ago)`, inline: false },
+        { name: "Joined Server", value: `<t:${joinedServer}:F>\n<t:${joinedServer}:R> (${serverAgeDays} days ago)`, inline: false },
+        { name: "Boost Status", value: boostStatus, inline: false },
+        { name: "Status", value: statusText, inline: true },
+        { name: `Roles [${roles.length}]`, value: roles.length > 0 ? roles.join(", ") : "No roles", inline: false }
+      )
+      .setFooter({ text: `Requested by ${interaction.user.tag}` })
+      .setTimestamp();
+
+    // Add permissions if user has any key permissions
+    if (keyPermissions.length > 0) {
+      embed.addFields({
+        name: "Key Permissions",
+        value: keyPermissions.join(", "),
+        inline: false
+      });
+    }
+
+    // Add avatar link
+    embed.addFields({
+      name: "Avatar",
+      value: `[View Full Size](${targetUser.displayAvatarURL({ dynamic: true, size: 4096 })})`,
+      inline: false
+    });
+
+    return interaction.reply({ embeds: [embed] });
   }
 
   // ============== OWNER/COOWNER COMMANDS ==============
@@ -794,6 +902,14 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
           inline: true
         },
         {
+          name: "📝 Embed Creator",
+          value:
+            "`/embed create` - Basic embed\n" +
+            "`/embed advanced` - With fields\n" +
+            "**Features:** Color, footer, images",
+          inline: true
+        },
+        {
           name: "📈 Stat Counters",
           value:
             "`/statcounters add` - Create counter\n" +
@@ -803,7 +919,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
           inline: true
         },
         {
-          name: "📝 Audit Logging",
+          name: "📋 Audit Logging",
           value:
             "`/setlogchannel` - Set log channel\n" +
             "`/logs view` - View log settings\n" +
@@ -1157,93 +1273,6 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
     return listTicketParticipants(interaction, data, dataPath);
   }
 
-  // Userinfo command
-  if (name === "userinfo") {
-    const targetUser = interaction.options.getUser("user") || interaction.user;
-    const targetMember = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
-
-    if (!targetMember) {
-      const embed = addLogo(
-        new EmbedBuilder()
-          .setDescription("❌ User not found in this server!")
-          .setColor(0xED4245),
-        config
-      );
-      return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
-    }
-
-    // Get user's roles (excluding @everyone)
-    const roles = targetMember.roles.cache
-      .filter(role => role.id !== interaction.guild.id)
-      .sort((a, b) => b.position - a.position)
-      .map(role => role.toString())
-      .slice(0, 20); // Limit to 20 roles to avoid embed limits
-
-    // Calculate account age
-    const accountCreated = Math.floor(targetUser.createdTimestamp / 1000);
-    const joinedServer = Math.floor(targetMember.joinedTimestamp / 1000);
-    const accountAgeDays = Math.floor((Date.now() - targetUser.createdTimestamp) / (1000 * 60 * 60 * 24));
-    const serverAgeDays = Math.floor((Date.now() - targetMember.joinedTimestamp) / (1000 * 60 * 60 * 24));
-
-    // Get user's permissions
-    const keyPermissions = [];
-    if (targetMember.permissions.has(PermissionFlagsBits.Administrator)) keyPermissions.push("Administrator");
-    if (targetMember.permissions.has(PermissionFlagsBits.ManageGuild)) keyPermissions.push("Manage Server");
-    if (targetMember.permissions.has(PermissionFlagsBits.ManageChannels)) keyPermissions.push("Manage Channels");
-    if (targetMember.permissions.has(PermissionFlagsBits.ManageRoles)) keyPermissions.push("Manage Roles");
-    if (targetMember.permissions.has(PermissionFlagsBits.BanMembers)) keyPermissions.push("Ban Members");
-    if (targetMember.permissions.has(PermissionFlagsBits.KickMembers)) keyPermissions.push("Kick Members");
-
-    // Get boost status
-    const boostStatus = targetMember.premiumSince
-      ? `✨ Boosting since <t:${Math.floor(targetMember.premiumSinceTimestamp / 1000)}:R>`
-      : "Not boosting";
-
-    // Get user status/activity
-    const presence = targetMember.presence;
-    const statusEmojis = {
-      online: "🟢",
-      idle: "🟡",
-      dnd: "🔴",
-      offline: "⚫"
-    };
-    const statusText = presence ? `${statusEmojis[presence.status] || "⚫"} ${presence.status.charAt(0).toUpperCase() + presence.status.slice(1)}` : "⚫ Offline";
-
-    const embed = new EmbedBuilder()
-      .setTitle(`User Information - ${targetUser.tag}`)
-      .setColor(targetMember.displayHexColor || 0x5865F2)
-      .setThumbnail(targetUser.displayAvatarURL({ dynamic: true, size: 256 }))
-      .addFields(
-        { name: "Username", value: targetUser.username, inline: true },
-        { name: "Display Name", value: targetMember.displayName, inline: true },
-        { name: "User ID", value: `\`${targetUser.id}\``, inline: true },
-        { name: "Account Created", value: `<t:${accountCreated}:F>\n<t:${accountCreated}:R> (${accountAgeDays} days ago)`, inline: false },
-        { name: "Joined Server", value: `<t:${joinedServer}:F>\n<t:${joinedServer}:R> (${serverAgeDays} days ago)`, inline: false },
-        { name: "Boost Status", value: boostStatus, inline: false },
-        { name: "Status", value: statusText, inline: true },
-        { name: `Roles [${roles.length}]`, value: roles.length > 0 ? roles.join(", ") : "No roles", inline: false }
-      )
-      .setFooter({ text: `Requested by ${interaction.user.tag}` })
-      .setTimestamp();
-
-    // Add permissions if user has any key permissions
-    if (keyPermissions.length > 0) {
-      embed.addFields({
-        name: "Key Permissions",
-        value: keyPermissions.join(", "),
-        inline: false
-      });
-    }
-
-    // Add avatar link
-    embed.addFields({
-      name: "Avatar",
-      value: `[View Full Size](${targetUser.displayAvatarURL({ dynamic: true, size: 4096 })})`,
-      inline: false
-    });
-
-    return interaction.reply({ embeds: [embed] });
-  }
 
   // ============== VERIFICATION SYSTEM ==============
   if (name === "verifypanel") {
@@ -1740,6 +1769,19 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
         );
         await interaction.editReply({ embeds: [embed] });
       }
+    }
+  }
+
+  // ============== EMBED CREATOR ==============
+  if (name === "embed") {
+    const subcommand = interaction.options.getSubcommand();
+
+    if (subcommand === "create") {
+      return showEmbedModal(interaction);
+    }
+
+    if (subcommand === "advanced") {
+      return showAdvancedEmbedModal(interaction);
     }
   }
 

@@ -900,6 +900,36 @@ const commands = [
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
+  // ============== EMBED CREATOR ==============
+  new SlashCommandBuilder()
+    .setName("embed")
+    .setDescription("Create a custom embed message")
+    .addSubcommand(sub =>
+      sub
+        .setName("create")
+        .setDescription("Create a basic custom embed")
+        .addChannelOption(opt =>
+          opt
+            .setName("channel")
+            .setDescription("Channel to send the embed to")
+            .addChannelTypes(ChannelType.GuildText)
+            .setRequired(false)
+        )
+    )
+    .addSubcommand(sub =>
+      sub
+        .setName("advanced")
+        .setDescription("Create an advanced embed with fields")
+        .addChannelOption(opt =>
+          opt
+            .setName("channel")
+            .setDescription("Channel to send the embed to")
+            .addChannelTypes(ChannelType.GuildText)
+            .setRequired(false)
+        )
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
+
 ].map((c) => c.toJSON());
 
 module.exports = commands;

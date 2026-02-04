@@ -367,4 +367,96 @@ router.get('/stats/automod', verifyAuth, verifyAdmin, async (req, res) => {
   }
 });
 
+// GET /api/bot/stats/server - Get server statistics (admin only)
+router.get('/stats/server', verifyAuth, verifyAdmin, async (req, res) => {
+  try {
+    const client = req.app.locals.client;
+    const config = req.app.locals.config;
+
+    if (!client || !client.isReady()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Discord bot not ready'
+      });
+    }
+
+    // Get the main guild (first guild in config or first guild in cache)
+    const guildId = config?.guild_ids?.[0];
+    const guild = guildId ? client.guilds.cache.get(guildId) : client.guilds.cache.first();
+
+    if (!guild) {
+      return res.status(404).json({
+        success: false,
+        error: 'Guild not found'
+      });
+    }
+
+    // Calculate member statistics
+    const totalMembers = guild.memberCount;
+    const onlineMembers = guild.members.cache.filter(m => m.presence?.status === 'online').size;
+    const idleMembers = guild.members.cache.filter(m => m.presence?.status === 'idle').size;
+    const dndMembers = guild.members.cache.filter(m => m.presence?.status === 'dnd').size;
+    const offlineMembers = guild.members.cache.filter(m => !m.presence || m.presence.status === 'offline').size;
+    const bots = guild.members.cache.filter(m => m.user.bot).size;
+    const humans = guild.members.cache.filter(m => !m.user.bot).size;
+
+    // Calculate channel statistics
+    const { ChannelType } = require('discord.js');
+    const totalChannels = guild.channels.cache.filter(c => c.type !== ChannelType.GuildCategory).size;
+    const textChannels = guild.channels.cache.filter(c => c.type === ChannelType.GuildText).size;
+    const voiceChannels = guild.channels.cache.filter(c => c.type === ChannelType.GuildVoice).size;
+
+    // Voice statistics
+    let voiceMembers = 0;
+    guild.channels.cache.forEach(channel => {
+      if (channel.type === ChannelType.GuildVoice) {
+        voiceMembers += channel.members.size;
+      }
+    });
+
+    // Server boost statistics
+    const boosts = guild.premiumSubscriptionCount || 0;
+    const boostLevel = guild.premiumTier;
+
+    // Role statistics
+    const totalRoles = guild.roles.cache.size - 1; // Exclude @everyone
+
+    const serverStats = {
+      guildName: guild.name,
+      members: {
+        total: totalMembers,
+        online: onlineMembers,
+        idle: idleMembers,
+        dnd: dndMembers,
+        offline: offlineMembers,
+        bots: bots,
+        humans: humans,
+        inVoice: voiceMembers
+      },
+      channels: {
+        total: totalChannels,
+        text: textChannels,
+        voice: voiceChannels
+      },
+      roles: totalRoles,
+      boosts: {
+        count: boosts,
+        level: boostLevel
+      }
+    };
+
+    res.json({
+      success: true,
+      data: serverStats
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching server stats:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch server statistics'
+    });
+  }
+});
+
 module.exports = router;

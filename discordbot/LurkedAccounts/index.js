@@ -222,6 +222,11 @@ client.on("clientReady", async () => {
   app.use('/api/bot', statsAPI);
   console.log('✅ Stats API routes loaded');
 
+  // Load Tickets API routes
+  const ticketsAPI = require('./api/ticketsAPI');
+  app.use('/api/bot', ticketsAPI);
+  console.log('✅ Tickets API routes loaded');
+
   // Log all registered routes for debugging
   console.log('\n📍 Registered API routes:');
   if (app._router && app._router.stack) {

@@ -768,6 +768,97 @@ const commands = [
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
+  // ============== STAT COUNTERS ==============
+  new SlashCommandBuilder()
+    .setName("statcounters")
+    .setDescription("Configure live stat counter channels (like StatBot)")
+    .addSubcommand(sub =>
+      sub
+        .setName("add")
+        .setDescription("Create a new stat counter channel")
+        .addStringOption(opt =>
+          opt
+            .setName("type")
+            .setDescription("Type of stat to track")
+            .setRequired(true)
+            .addChoices(
+              { name: "👥 Total Members", value: "total_members" },
+              { name: "🟢 Online Members", value: "online_members" },
+              { name: "🟡 Idle Members", value: "idle_members" },
+              { name: "🔴 DND Members", value: "dnd_members" },
+              { name: "⚫ Offline Members", value: "offline_members" },
+              { name: "🤖 Bots", value: "bots" },
+              { name: "👤 Humans", value: "humans" },
+              { name: "📁 Channels", value: "channels" },
+              { name: "🎭 Roles", value: "roles" },
+              { name: "💎 Server Boosts", value: "boosts" },
+              { name: "⭐ Boost Level", value: "boost_level" },
+              { name: "🔊 Members in Voice", value: "voice_members" },
+              { name: "📊 Custom Counter", value: "custom" }
+            )
+        )
+        .addStringOption(opt =>
+          opt.setName("label").setDescription("Custom label (optional, e.g., 'Users', 'Members')")
+        )
+        .addStringOption(opt =>
+          opt.setName("icon").setDescription("Custom emoji icon (optional, e.g., 👥, 🎮)")
+        )
+        .addStringOption(opt =>
+          opt.setName("format").setDescription("Format: {icon} {label}: {value} (optional)")
+        )
+        .addIntegerOption(opt =>
+          opt.setName("custom_value").setDescription("Initial value for custom counter (required for custom type)")
+        )
+    )
+    .addSubcommand(sub =>
+      sub
+        .setName("remove")
+        .setDescription("Remove a stat counter channel")
+        .addChannelOption(opt =>
+          opt
+            .setName("channel")
+            .setDescription("Stat counter channel to remove")
+            .addChannelTypes(ChannelType.GuildVoice)
+            .setRequired(true)
+        )
+    )
+    .addSubcommand(sub =>
+      sub
+        .setName("list")
+        .setDescription("List all configured stat counters")
+    )
+    .addSubcommand(sub =>
+      sub
+        .setName("update")
+        .setDescription("Update a custom stat counter value")
+        .addChannelOption(opt =>
+          opt
+            .setName("channel")
+            .setDescription("Custom stat counter channel")
+            .addChannelTypes(ChannelType.GuildVoice)
+            .setRequired(true)
+        )
+        .addIntegerOption(opt =>
+          opt.setName("value").setDescription("New value").setRequired(true)
+        )
+    )
+    .addSubcommand(sub =>
+      sub
+        .setName("enable")
+        .setDescription("Enable stat counter auto-updates")
+    )
+    .addSubcommand(sub =>
+      sub
+        .setName("disable")
+        .setDescription("Disable stat counter auto-updates")
+    )
+    .addSubcommand(sub =>
+      sub
+        .setName("refresh")
+        .setDescription("Manually refresh all stat counters now")
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
 ].map((c) => c.toJSON());
 
 module.exports = commands;

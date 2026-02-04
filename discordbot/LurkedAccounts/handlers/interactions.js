@@ -22,6 +22,7 @@ const { configureAutomod } = require("../features/automod");
 const { setTicketPriority, addTicketNote, viewTicketNotes, showRatingModal, handleTicketRating, toggleAutoClose, viewTicketStats, renameTicket, setRatingsChannel, addUserToTicket, removeUserFromTicket, listTicketParticipants } = require("../features/ticketEnhancements");
 const { createVerificationPanel, startVerification, handleVerificationAnswer, showVerificationStats, configureVerification, setVerificationChannel, manualVerify, unverifyUser } = require("../features/verification");
 const { showSecurityDashboard, showRecentLogs } = require("../features/securityLogs");
+const { createStatCounter, removeStatCounter, updateStatCounters, updateCustomValue, setEnabled, STAT_TYPES } = require("../features/statCounters");
 
 async function handleInteraction(interaction, config, data, configPath, dataPath, io) {
   // Handle modal submissions
@@ -793,6 +794,15 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
           inline: true
         },
         {
+          name: "📈 Stat Counters",
+          value:
+            "`/statcounters add` - Create counter\n" +
+            "`/statcounters list` - View all\n" +
+            "`/statcounters remove` - Delete\n" +
+            "`/statcounters enable/disable`",
+          inline: true
+        },
+        {
           name: "⚙️ Configuration",
           value:
             "`/quicksetup tickets` - Fast setup\n" +
@@ -1371,6 +1381,215 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
         config
       );
       return interaction.reply({ embeds: [embed] });
+    }
+  }
+
+  // ============== STAT COUNTERS ==============
+  if (name === "statcounters") {
+    const subcommand = interaction.options.getSubcommand();
+
+    if (subcommand === "add") {
+      const type = interaction.options.getString("type", true);
+      const label = interaction.options.getString("label");
+      const icon = interaction.options.getString("icon");
+      const format = interaction.options.getString("format");
+      const customValue = interaction.options.getInteger("custom_value");
+
+      // Validate custom counter has a value
+      if (type === "custom" && customValue === null) {
+        const embed = addLogo(
+          new EmbedBuilder()
+            .setDescription("❌ Custom counters require a `custom_value` parameter!")
+            .setColor(0xED4245),
+          config
+        );
+        return interaction.reply({ embeds: [embed], ephemeral: true });
+      }
+
+      await interaction.deferReply();
+
+      try {
+        const channel = await createStatCounter(
+          interaction.guild,
+          type,
+          label,
+          icon,
+          format,
+          customValue,
+          config
+        );
+
+        const statType = type === "custom" ? "Custom" : STAT_TYPES[type]?.name || type;
+        const embed = addLogo(
+          new EmbedBuilder()
+            .setTitle("✅ Stat Counter Created")
+            .setDescription(
+              `Created stat counter: ${channel}\n\n` +
+              `**Type:** ${statType}\n` +
+              `**Updates:** Every 5 minutes automatically\n\n` +
+              `Use \`/statcounters list\` to see all counters.`
+            )
+            .setColor(0x57F287),
+          config
+        );
+        await interaction.editReply({ embeds: [embed] });
+      } catch (error) {
+        console.error("Error creating stat counter:", error);
+        const embed = addLogo(
+          new EmbedBuilder()
+            .setDescription(`❌ Failed to create stat counter: ${error.message}`)
+            .setColor(0xED4245),
+          config
+        );
+        await interaction.editReply({ embeds: [embed] });
+      }
+    }
+
+    if (subcommand === "remove") {
+      const channel = interaction.options.getChannel("channel", true);
+
+      await interaction.deferReply();
+
+      try {
+        await removeStatCounter(interaction.guild, channel.id, config);
+
+        const embed = addLogo(
+          new EmbedBuilder()
+            .setDescription(`✅ Removed stat counter: ${channel.name}`)
+            .setColor(0x57F287),
+          config
+        );
+        await interaction.editReply({ embeds: [embed] });
+      } catch (error) {
+        console.error("Error removing stat counter:", error);
+        const embed = addLogo(
+          new EmbedBuilder()
+            .setDescription(`❌ Failed to remove stat counter: ${error.message}`)
+            .setColor(0xED4245),
+          config
+        );
+        await interaction.editReply({ embeds: [embed] });
+      }
+    }
+
+    if (subcommand === "list") {
+      if (!config.stat_counters || !config.stat_counters.counters || config.stat_counters.counters.length === 0) {
+        const embed = addLogo(
+          new EmbedBuilder()
+            .setDescription(
+              "📊 No stat counters configured yet.\n\n" +
+              "Use `/statcounters add` to create your first counter!"
+            )
+            .setColor(0x5865F2),
+          config
+        );
+        return interaction.reply({ embeds: [embed], ephemeral: true });
+      }
+
+      const countersList = config.stat_counters.counters
+        .map((counter, index) => {
+          const channel = interaction.guild.channels.cache.get(counter.channel_id);
+          const channelMention = channel ? `<#${counter.channel_id}>` : `❌ Deleted`;
+          const statType = counter.type === "custom" ? "Custom" : STAT_TYPES[counter.type]?.name || counter.type;
+          return `**${index + 1}.** ${channelMention}\n└ **Type:** ${statType} ${counter.icon || ""}`;
+        })
+        .join("\n\n");
+
+      const embed = addLogo(
+        new EmbedBuilder()
+          .setTitle("📊 Stat Counters")
+          .setDescription(
+            `**Status:** ${config.stat_counters.enabled ? "🟢 Enabled" : "🔴 Disabled"}\n` +
+            `**Update Interval:** Every 5 minutes\n\n` +
+            countersList
+          )
+          .setColor(0x5865F2)
+          .setFooter({ text: "Use /statcounters remove to delete a counter" }),
+        config
+      );
+      return interaction.reply({ embeds: [embed], ephemeral: true });
+    }
+
+    if (subcommand === "update") {
+      const channel = interaction.options.getChannel("channel", true);
+      const value = interaction.options.getInteger("value", true);
+
+      const success = await updateCustomValue(interaction.guild, channel.id, value, config);
+
+      if (success) {
+        const embed = addLogo(
+          new EmbedBuilder()
+            .setDescription(`✅ Updated custom counter ${channel} to **${value.toLocaleString()}**`)
+            .setColor(0x57F287),
+          config
+        );
+        return interaction.reply({ embeds: [embed] });
+      } else {
+        const embed = addLogo(
+          new EmbedBuilder()
+            .setDescription(`❌ That channel is not a custom stat counter!`)
+            .setColor(0xED4245),
+          config
+        );
+        return interaction.reply({ embeds: [embed], ephemeral: true });
+      }
+    }
+
+    if (subcommand === "enable") {
+      setEnabled(true, config);
+
+      const embed = addLogo(
+        new EmbedBuilder()
+          .setDescription(
+            "✅ Stat counters enabled!\n\n" +
+            "Counters will update automatically every 5 minutes.\n" +
+            "Restart the bot for changes to take effect."
+          )
+          .setColor(0x57F287),
+        config
+      );
+      return interaction.reply({ embeds: [embed] });
+    }
+
+    if (subcommand === "disable") {
+      setEnabled(false, config);
+
+      const embed = addLogo(
+        new EmbedBuilder()
+          .setDescription(
+            "✅ Stat counters disabled.\n\n" +
+            "Channels will remain but won't auto-update.\n" +
+            "Restart the bot for changes to take effect."
+          )
+          .setColor(0x57F287),
+        config
+      );
+      return interaction.reply({ embeds: [embed] });
+    }
+
+    if (subcommand === "refresh") {
+      await interaction.deferReply({ ephemeral: true });
+
+      try {
+        await updateStatCounters(interaction.guild, config);
+
+        const embed = addLogo(
+          new EmbedBuilder()
+            .setDescription("✅ All stat counters have been refreshed!")
+            .setColor(0x57F287),
+          config
+        );
+        await interaction.editReply({ embeds: [embed] });
+      } catch (error) {
+        console.error("Error refreshing stat counters:", error);
+        const embed = addLogo(
+          new EmbedBuilder()
+            .setDescription(`❌ Failed to refresh counters: ${error.message}`)
+            .setColor(0xED4245),
+          config
+        );
+        await interaction.editReply({ embeds: [embed] });
+      }
     }
   }
 

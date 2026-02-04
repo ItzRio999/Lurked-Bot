@@ -16,7 +16,7 @@ const { generalLimiter } = require('./middleware/rateLimiter');
 // Lazy-load feature modules (loaded on-demand for better memory efficiency on Pi)
 let ticketsModule, staffTrackingModule, boostTrackingModule;
 let welcomeModule, auditLogsModule, pollsModule, giveawaysModule, automodModule, ticketEnhancementsModule;
-let verificationModule, dropSyncModule;
+let verificationModule, dropSyncModule, statCountersModule;
 
 // Load configuration and data
 const config = loadJson(CONFIG_PATH, null);
@@ -323,6 +323,12 @@ client.on("clientReady", async () => {
 
   // Initial inactive ticket check
   ticketEnhancementsModule.checkInactiveTickets(client, data, DATA_PATH, config);
+
+  // Initialize stat counters (lazy load)
+  statCountersModule = require("./features/statCounters");
+  if (config.stat_counters && config.stat_counters.enabled) {
+    statCountersModule.initializeStatCounters(client, config);
+  }
 });
 
 client.on("messageCreate", async (message) => {
@@ -499,6 +505,12 @@ process.on("unhandledRejection", (error) => {
 // Graceful shutdown
 process.on('SIGINT', () => {
   console.log('\n🛑 Shutting down...');
+
+  // Stop stat counter updates
+  if (statCountersModule) {
+    statCountersModule.stopAllUpdates();
+  }
+
   client.destroy();
   process.exit(0);
 });

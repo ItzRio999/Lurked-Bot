@@ -1,6 +1,7 @@
 const { EmbedBuilder, PermissionFlagsBits, MessageFlags } = require("discord.js");
+const { logTimeout, logUntimeout, logKick, logBan, logSoftban, logUnban, logBulkDelete } = require("./auditLogs");
 
-async function nukeMessages(interaction) {
+async function nukeMessages(interaction, config) {
   const amount = interaction.options.getInteger("amount", true);
   const targetUser = interaction.options.getUser("user");
 
@@ -60,6 +61,9 @@ async function nukeMessages(interaction) {
       .setTimestamp();
 
     await interaction.channel.send({ embeds: [nukeEmbed] });
+
+    // Log to audit log
+    await logBulkDelete(interaction.channel, totalDeleted, interaction.user, targetUser, config);
   } catch (error) {
     console.error("Error purging messages:", error);
     const embed = new EmbedBuilder()
@@ -75,7 +79,7 @@ async function nukeMessages(interaction) {
 }
 
 // Timeout (mute) a user
-async function timeoutUser(interaction) {
+async function timeoutUser(interaction, config) {
   const targetUser = interaction.options.getUser("user", true);
   const duration = interaction.options.getInteger("duration", true); // in minutes
   const reason = interaction.options.getString("reason") || "No reason provided";
@@ -140,6 +144,9 @@ async function timeoutUser(interaction) {
       .setTimestamp();
 
     await interaction.reply({ embeds: [embed] });
+
+    // Log to audit log
+    await logTimeout(interaction.guild, targetUser, interaction.user, durationMs, reason, config);
   } catch (error) {
     console.error("Error timing out user:", error);
     const embed = new EmbedBuilder()
@@ -150,7 +157,7 @@ async function timeoutUser(interaction) {
 }
 
 // Remove timeout from a user
-async function untimeoutUser(interaction) {
+async function untimeoutUser(interaction, config) {
   const targetUser = interaction.options.getUser("user", true);
   const reason = interaction.options.getString("reason") || "No reason provided";
 
@@ -185,6 +192,9 @@ async function untimeoutUser(interaction) {
       .setTimestamp();
 
     await interaction.reply({ embeds: [embed] });
+
+    // Log to audit log
+    await logUntimeout(interaction.guild, targetUser, interaction.user, reason, config);
   } catch (error) {
     console.error("Error removing timeout:", error);
     const embed = new EmbedBuilder()
@@ -195,7 +205,7 @@ async function untimeoutUser(interaction) {
 }
 
 // Kick a user
-async function kickUser(interaction) {
+async function kickUser(interaction, config) {
   const targetUser = interaction.options.getUser("user", true);
   const reason = interaction.options.getString("reason") || "No reason provided";
 
@@ -255,6 +265,9 @@ async function kickUser(interaction) {
       .setTimestamp();
 
     await interaction.reply({ embeds: [embed] });
+
+    // Log to audit log
+    await logKick(interaction.guild, targetUser, interaction.user, reason, config);
   } catch (error) {
     console.error("Error kicking user:", error);
     const embed = new EmbedBuilder()
@@ -265,7 +278,7 @@ async function kickUser(interaction) {
 }
 
 // Ban a user (hard ban - deletes messages)
-async function banUser(interaction) {
+async function banUser(interaction, config) {
   const targetUser = interaction.options.getUser("user", true);
   const reason = interaction.options.getString("reason") || "No reason provided";
   const deleteMessages = interaction.options.getInteger("delete_days") || 1; // Days of messages to delete
@@ -331,6 +344,9 @@ async function banUser(interaction) {
       .setTimestamp();
 
     await interaction.reply({ embeds: [embed] });
+
+    // Log to audit log
+    await logBan(interaction.guild, targetUser, interaction.user, reason, deleteMessages, config);
   } catch (error) {
     console.error("Error banning user:", error);
     const embed = new EmbedBuilder()
@@ -341,7 +357,7 @@ async function banUser(interaction) {
 }
 
 // Soft ban (ban + unban to delete messages and kick)
-async function softbanUser(interaction) {
+async function softbanUser(interaction, config) {
   const targetUser = interaction.options.getUser("user", true);
   const reason = interaction.options.getString("reason") || "No reason provided";
   const deleteMessages = interaction.options.getInteger("delete_days") || 7; // Days of messages to delete
@@ -407,6 +423,9 @@ async function softbanUser(interaction) {
       .setTimestamp();
 
     await interaction.reply({ embeds: [embed] });
+
+    // Log to audit log
+    await logSoftban(interaction.guild, targetUser, interaction.user, reason, deleteMessages, config);
   } catch (error) {
     console.error("Error soft banning user:", error);
     const embed = new EmbedBuilder()
@@ -417,7 +436,7 @@ async function softbanUser(interaction) {
 }
 
 // Unban a user
-async function unbanUser(interaction) {
+async function unbanUser(interaction, config) {
   const userId = interaction.options.getString("user_id", true);
   const reason = interaction.options.getString("reason") || "No reason provided";
 
@@ -447,6 +466,9 @@ async function unbanUser(interaction) {
       .setTimestamp();
 
     await interaction.reply({ embeds: [embed] });
+
+    // Log to audit log
+    await logUnban(interaction.guild, bannedUser.user, interaction.user, reason, config);
   } catch (error) {
     console.error("Error unbanning user:", error);
     const embed = new EmbedBuilder()

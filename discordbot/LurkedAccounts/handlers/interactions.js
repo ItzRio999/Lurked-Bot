@@ -803,6 +803,15 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
           inline: true
         },
         {
+          name: "📝 Audit Logging",
+          value:
+            "`/setlogchannel` - Set log channel\n" +
+            "`/logs view` - View log settings\n" +
+            "`/logs config` - Configure logs\n" +
+            "`/disablelogs` - Disable logging",
+          inline: true
+        },
+        {
           name: "⚙️ Configuration",
           value:
             "`/quicksetup tickets` - Fast setup\n" +
@@ -822,31 +831,31 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
 
   // Moderation
   if (name === "nuke") {
-    return nukeMessages(interaction);
+    return nukeMessages(interaction, config);
   }
 
   if (name === "timeout") {
-    return timeoutUser(interaction);
+    return timeoutUser(interaction, config);
   }
 
   if (name === "untimeout") {
-    return untimeoutUser(interaction);
+    return untimeoutUser(interaction, config);
   }
 
   if (name === "kick") {
-    return kickUser(interaction);
+    return kickUser(interaction, config);
   }
 
   if (name === "ban") {
-    return banUser(interaction);
+    return banUser(interaction, config);
   }
 
   if (name === "softban") {
-    return softbanUser(interaction);
+    return softbanUser(interaction, config);
   }
 
   if (name === "unban") {
-    return unbanUser(interaction);
+    return unbanUser(interaction, config);
   }
 
   // Poll System
@@ -959,6 +968,147 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
       config
     );
     return interaction.reply({ embeds: [embed] });
+  }
+
+  // Log Configuration
+  if (name === "logs") {
+    const subcommand = interaction.options.getSubcommand();
+
+    // Initialize logging config if it doesn't exist
+    if (!config.logging) {
+      config.logging = {
+        moderation: true,
+        member_events: true,
+        role_updates: true,
+        message_delete: true,
+        message_edit: true,
+        message_bulk_delete: true
+      };
+    }
+
+    if (subcommand === "view") {
+      const logChannel = config.audit_log_channel_id
+        ? `<#${config.audit_log_channel_id}>`
+        : "Not set";
+
+      const getStatus = (enabled) => (enabled !== false ? "🟢 Enabled" : "🔴 Disabled");
+
+      const embed = addLogo(
+        new EmbedBuilder()
+          .setTitle("Logging Configuration")
+          .setDescription(`**Log Channel:** ${logChannel}\n\nUse \`/logs config\` to toggle individual log types.`)
+          .addFields(
+            { name: "🔨 Moderation", value: getStatus(config.logging.moderation), inline: true },
+            { name: "👥 Member Events", value: getStatus(config.logging.member_events), inline: true },
+            { name: "🎭 Role Updates", value: getStatus(config.logging.role_updates), inline: true },
+            { name: "🗑️ Message Delete", value: getStatus(config.logging.message_delete), inline: true },
+            { name: "✏️ Message Edit", value: getStatus(config.logging.message_edit), inline: true },
+            { name: "🧹 Bulk Delete", value: getStatus(config.logging.message_bulk_delete), inline: true }
+          )
+          .setColor(0x5865F2)
+          .setFooter({ text: "All logs require a log channel to be set with /setlogchannel" }),
+        config
+      );
+      return interaction.reply({ embeds: [embed], ephemeral: true });
+    }
+
+    if (subcommand === "config") {
+      const type = interaction.options.getString("type");
+      const enabled = interaction.options.getBoolean("enabled");
+
+      if (!type && enabled === null) {
+        // Show current config
+        const getStatus = (enabled) => (enabled !== false ? "🟢 Enabled" : "🔴 Disabled");
+
+        const embed = addLogo(
+          new EmbedBuilder()
+            .setTitle("Logging Configuration")
+            .setDescription("Configure which events are logged to your audit log channel.")
+            .addFields(
+              { name: "🔨 Moderation", value: getStatus(config.logging.moderation), inline: true },
+              { name: "👥 Member Events", value: getStatus(config.logging.member_events), inline: true },
+              { name: "🎭 Role Updates", value: getStatus(config.logging.role_updates), inline: true },
+              { name: "🗑️ Message Delete", value: getStatus(config.logging.message_delete), inline: true },
+              { name: "✏️ Message Edit", value: getStatus(config.logging.message_edit), inline: true },
+              { name: "🧹 Bulk Delete", value: getStatus(config.logging.message_bulk_delete), inline: true }
+            )
+            .setColor(0x5865F2)
+            .setFooter({ text: "Use /logs config type:<type> enabled:<true/false> to change" }),
+          config
+        );
+        return interaction.reply({ embeds: [embed], ephemeral: true });
+      }
+
+      if (!type || enabled === null) {
+        const embed = addLogo(
+          new EmbedBuilder()
+            .setDescription("❌ You must specify both `type` and `enabled` options!")
+            .setColor(0xED4245),
+          config
+        );
+        return interaction.reply({ embeds: [embed], ephemeral: true });
+      }
+
+      config.logging[type] = enabled;
+      saveJson(configPath, config);
+
+      const typeNames = {
+        moderation: "Moderation",
+        member_events: "Member Events",
+        role_updates: "Role Updates",
+        message_delete: "Message Delete",
+        message_edit: "Message Edit",
+        message_bulk_delete: "Bulk Delete"
+      };
+
+      const embed = addLogo(
+        new EmbedBuilder()
+          .setDescription(`✅ ${typeNames[type]} logging ${enabled ? "enabled" : "disabled"}`)
+          .setColor(0x57F287),
+        config
+      );
+      return interaction.reply({ embeds: [embed] });
+    }
+
+    if (subcommand === "enableall") {
+      config.logging = {
+        moderation: true,
+        member_events: true,
+        role_updates: true,
+        message_delete: true,
+        message_edit: true,
+        message_bulk_delete: true
+      };
+      saveJson(configPath, config);
+
+      const embed = addLogo(
+        new EmbedBuilder()
+          .setDescription("✅ All log types have been enabled!")
+          .setColor(0x57F287),
+        config
+      );
+      return interaction.reply({ embeds: [embed] });
+    }
+
+    if (subcommand === "disableall") {
+      config.logging = {
+        moderation: false,
+        member_events: true, // Keep member events enabled by default
+        role_updates: false,
+        message_delete: false,
+        message_edit: false,
+        message_bulk_delete: false
+      };
+      saveJson(configPath, config);
+
+      const embed = addLogo(
+        new EmbedBuilder()
+          .setDescription("✅ All log types disabled (except member events)")
+          .setColor(0x57F287),
+        config
+      );
+      return interaction.reply({ embeds: [embed] });
+    }
   }
 
   // Auto-Moderation

@@ -4,6 +4,7 @@ const { mention } = require("../utils/permissions");
 
 async function logMemberJoin(member, config) {
   if (!config.audit_log_channel_id) return;
+  if (!config.logging || config.logging.member_events === false) return;
 
   const logChannel = member.guild.channels.cache.get(config.audit_log_channel_id);
   if (!logChannel) return;
@@ -37,6 +38,7 @@ async function logMemberJoin(member, config) {
 
 async function logMemberLeave(member, config) {
   if (!config.audit_log_channel_id) return;
+  if (!config.logging || config.logging.member_events === false) return;
 
   const logChannel = member.guild.channels.cache.get(config.audit_log_channel_id);
   if (!logChannel) return;
@@ -72,6 +74,7 @@ async function logMemberLeave(member, config) {
 
 async function logRoleUpdate(before, after, config) {
   if (!config.audit_log_channel_id) return;
+  if (!config.logging || config.logging.role_updates === false) return;
 
   const addedRoles = after.roles.cache.filter((r) => !before.roles.cache.has(r.id));
   const removedRoles = before.roles.cache.filter((r) => !after.roles.cache.has(r.id));
@@ -108,6 +111,7 @@ async function logRoleUpdate(before, after, config) {
 async function logMessageDelete(message, config, data) {
   if (!message.guild || message.author?.bot) return;
   if (!config.audit_log_channel_id) return;
+  if (!config.logging || config.logging.message_delete === false) return;
 
   const logChannel = message.guild.channels.cache.get(config.audit_log_channel_id);
   if (!logChannel) return;
@@ -143,6 +147,7 @@ async function logMessageDelete(message, config, data) {
 async function logMessageEdit(before, after, config) {
   if (!after.guild || after.author?.bot) return;
   if (!config.audit_log_channel_id) return;
+  if (!config.logging || config.logging.message_edit === false) return;
   if (before.content === after.content) return;
 
   const logChannel = after.guild.channels.cache.get(config.audit_log_channel_id);
@@ -194,6 +199,185 @@ function cacheMessage(message, data, dataPath) {
   saveJson(dataPath, data);
 }
 
+// Log timeout action
+async function logTimeout(guild, targetUser, moderator, duration, reason, config) {
+  if (!config.audit_log_channel_id) return;
+  if (!config.logging || config.logging.moderation === false) return;
+
+  const logChannel = guild.channels.cache.get(config.audit_log_channel_id);
+  if (!logChannel) return;
+
+  const durationText = formatDuration(duration);
+
+  const embed = new EmbedBuilder()
+    .setTitle("🔇 Member Timed Out")
+    .setDescription(`**Member:** ${targetUser} (${targetUser.tag})\n**Moderator:** ${moderator}`)
+    .addFields(
+      { name: "User ID", value: targetUser.id, inline: true },
+      { name: "Duration", value: durationText, inline: true },
+      { name: "Expires", value: `<t:${Math.floor((Date.now() + duration) / 1000)}:R>`, inline: true },
+      { name: "Reason", value: reason || "No reason provided", inline: false }
+    )
+    .setColor(0xFEE75C)
+    .setThumbnail(targetUser.displayAvatarURL())
+    .setFooter({ text: `Moderator ID: ${moderator.id}` })
+    .setTimestamp();
+
+  await logChannel.send({ embeds: [embed] }).catch(console.error);
+}
+
+// Log timeout removal
+async function logUntimeout(guild, targetUser, moderator, reason, config) {
+  if (!config.audit_log_channel_id) return;
+  if (!config.logging || config.logging.moderation === false) return;
+
+  const logChannel = guild.channels.cache.get(config.audit_log_channel_id);
+  if (!logChannel) return;
+
+  const embed = new EmbedBuilder()
+    .setTitle("🔊 Timeout Removed")
+    .setDescription(`**Member:** ${targetUser} (${targetUser.tag})\n**Moderator:** ${moderator}`)
+    .addFields(
+      { name: "User ID", value: targetUser.id, inline: true },
+      { name: "Moderator ID", value: moderator.id, inline: true },
+      { name: "\u200b", value: "\u200b", inline: true },
+      { name: "Reason", value: reason || "No reason provided", inline: false }
+    )
+    .setColor(0x57F287)
+    .setThumbnail(targetUser.displayAvatarURL())
+    .setTimestamp();
+
+  await logChannel.send({ embeds: [embed] }).catch(console.error);
+}
+
+// Log kick action
+async function logKick(guild, targetUser, moderator, reason, config) {
+  if (!config.audit_log_channel_id) return;
+  if (!config.logging || config.logging.moderation === false) return;
+
+  const logChannel = guild.channels.cache.get(config.audit_log_channel_id);
+  if (!logChannel) return;
+
+  const embed = new EmbedBuilder()
+    .setTitle("👢 Member Kicked")
+    .setDescription(`**Member:** ${targetUser.tag}\n**Moderator:** ${moderator}`)
+    .addFields(
+      { name: "User ID", value: targetUser.id, inline: true },
+      { name: "Moderator ID", value: moderator.id, inline: true },
+      { name: "\u200b", value: "\u200b", inline: true },
+      { name: "Reason", value: reason || "No reason provided", inline: false }
+    )
+    .setColor(0xF26522)
+    .setThumbnail(targetUser.displayAvatarURL())
+    .setTimestamp();
+
+  await logChannel.send({ embeds: [embed] }).catch(console.error);
+}
+
+// Log ban action
+async function logBan(guild, targetUser, moderator, reason, deleteMessageDays, config) {
+  if (!config.audit_log_channel_id) return;
+  if (!config.logging || config.logging.moderation === false) return;
+
+  const logChannel = guild.channels.cache.get(config.audit_log_channel_id);
+  if (!logChannel) return;
+
+  const embed = new EmbedBuilder()
+    .setTitle("🔨 Member Banned")
+    .setDescription(`**Member:** ${targetUser.tag}\n**Moderator:** ${moderator}`)
+    .addFields(
+      { name: "User ID", value: targetUser.id, inline: true },
+      { name: "Moderator ID", value: moderator.id, inline: true },
+      { name: "Messages Deleted", value: `${deleteMessageDays} day(s)`, inline: true },
+      { name: "Reason", value: reason || "No reason provided", inline: false }
+    )
+    .setColor(0xED4245)
+    .setThumbnail(targetUser.displayAvatarURL())
+    .setTimestamp();
+
+  await logChannel.send({ embeds: [embed] }).catch(console.error);
+}
+
+// Log softban action
+async function logSoftban(guild, targetUser, moderator, reason, deleteMessageDays, config) {
+  if (!config.audit_log_channel_id) return;
+  if (!config.logging || config.logging.moderation === false) return;
+
+  const logChannel = guild.channels.cache.get(config.audit_log_channel_id);
+  if (!logChannel) return;
+
+  const embed = new EmbedBuilder()
+    .setTitle("🔄 Member Soft-Banned")
+    .setDescription(`**Member:** ${targetUser.tag}\n**Moderator:** ${moderator}\n\n*User was banned and immediately unbanned to clear messages*`)
+    .addFields(
+      { name: "User ID", value: targetUser.id, inline: true },
+      { name: "Moderator ID", value: moderator.id, inline: true },
+      { name: "Messages Deleted", value: `${deleteMessageDays} day(s)`, inline: true },
+      { name: "Reason", value: reason || "No reason provided", inline: false }
+    )
+    .setColor(0xF26522)
+    .setThumbnail(targetUser.displayAvatarURL())
+    .setTimestamp();
+
+  await logChannel.send({ embeds: [embed] }).catch(console.error);
+}
+
+// Log unban action
+async function logUnban(guild, targetUser, moderator, reason, config) {
+  if (!config.audit_log_channel_id) return;
+  if (!config.logging || config.logging.moderation === false) return;
+
+  const logChannel = guild.channels.cache.get(config.audit_log_channel_id);
+  if (!logChannel) return;
+
+  const embed = new EmbedBuilder()
+    .setTitle("✅ Member Unbanned")
+    .setDescription(`**User ID:** ${targetUser.id}\n**Moderator:** ${moderator}`)
+    .addFields(
+      { name: "Moderator ID", value: moderator.id, inline: true },
+      { name: "\u200b", value: "\u200b", inline: true },
+      { name: "\u200b", value: "\u200b", inline: true },
+      { name: "Reason", value: reason || "No reason provided", inline: false }
+    )
+    .setColor(0x57F287)
+    .setTimestamp();
+
+  await logChannel.send({ embeds: [embed] }).catch(console.error);
+}
+
+// Log bulk message delete (nuke)
+async function logBulkDelete(channel, count, moderator, targetUser, config) {
+  if (!config.audit_log_channel_id) return;
+  if (!config.logging || config.logging.message_bulk_delete === false) return;
+
+  const logChannel = channel.guild.channels.cache.get(config.audit_log_channel_id);
+  if (!logChannel) return;
+
+  const embed = new EmbedBuilder()
+    .setTitle("🧹 Bulk Message Delete")
+    .setDescription(`**Channel:** ${channel}\n**Moderator:** ${moderator}`)
+    .addFields(
+      { name: "Messages Deleted", value: count.toString(), inline: true },
+      { name: "Target User", value: targetUser ? `${targetUser.tag}` : "All users", inline: true },
+      { name: "Moderator ID", value: moderator.id, inline: true }
+    )
+    .setColor(0xFF4500)
+    .setTimestamp();
+
+  await logChannel.send({ embeds: [embed] }).catch(console.error);
+}
+
+// Helper function to format duration
+function formatDuration(ms) {
+  const minutes = Math.floor(ms / 60000);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) return `${days}d ${hours % 24}h ${minutes % 60}m`;
+  if (hours > 0) return `${hours}h ${minutes % 60}m`;
+  return `${minutes}m`;
+}
+
 module.exports = {
   logMemberJoin,
   logMemberLeave,
@@ -201,4 +385,11 @@ module.exports = {
   logMessageDelete,
   logMessageEdit,
   cacheMessage,
+  logTimeout,
+  logUntimeout,
+  logKick,
+  logBan,
+  logSoftban,
+  logUnban,
+  logBulkDelete,
 };

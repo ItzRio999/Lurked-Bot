@@ -657,6 +657,47 @@ const commands = [
     .setDescription("Disable audit logging")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
+  new SlashCommandBuilder()
+    .setName("logs")
+    .setDescription("Configure which types of events are logged")
+    .addSubcommand(sub =>
+      sub
+        .setName("config")
+        .setDescription("View or configure log settings")
+        .addStringOption(opt =>
+          opt
+            .setName("type")
+            .setDescription("Type of log to configure")
+            .addChoices(
+              { name: "Moderation (ban, kick, timeout)", value: "moderation" },
+              { name: "Member Join/Leave", value: "member_events" },
+              { name: "Role Updates", value: "role_updates" },
+              { name: "Message Delete", value: "message_delete" },
+              { name: "Message Edit", value: "message_edit" },
+              { name: "Bulk Delete (Nuke)", value: "message_bulk_delete" }
+            )
+        )
+        .addBooleanOption(opt =>
+          opt.setName("enabled").setDescription("Enable or disable this log type")
+        )
+    )
+    .addSubcommand(sub =>
+      sub
+        .setName("view")
+        .setDescription("View current logging configuration")
+    )
+    .addSubcommand(sub =>
+      sub
+        .setName("enableall")
+        .setDescription("Enable all log types")
+    )
+    .addSubcommand(sub =>
+      sub
+        .setName("disableall")
+        .setDescription("Disable all log types (except member events)")
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
   // ============== VERIFICATION SYSTEM ==============
   new SlashCommandBuilder()
     .setName("verify")

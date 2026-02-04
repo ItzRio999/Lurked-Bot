@@ -211,6 +211,16 @@ client.on("clientReady", async () => {
   app.use('/api/oauth', discordOAuthAPI);
   console.log('✅ Discord OAuth API routes loaded');
 
+  // Load Bot Config API routes
+  const botConfigAPI = require('./api/botConfigAPI');
+  app.use('/api/bot', botConfigAPI);
+  console.log('✅ Bot Config API routes loaded');
+
+  // Load Stats API routes
+  const statsAPI = require('./api/statsAPI');
+  app.use('/api/bot', statsAPI);
+  console.log('✅ Stats API routes loaded');
+
   // Log all registered routes for debugging
   console.log('\n📍 Registered API routes:');
   if (app._router && app._router.stack) {

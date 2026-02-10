@@ -854,6 +854,53 @@ const commands = [
     .setDescription("Show the top inviters in the server")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
+  // ============== TIMED ROLES ==============
+  new SlashCommandBuilder()
+    .setName("timedrole")
+    .setDescription("Assign a role to a user for a set duration")
+    .addUserOption((opt) =>
+      opt.setName("user").setDescription("User to assign the role to").setRequired(true)
+    )
+    .addRoleOption((opt) =>
+      opt.setName("role").setDescription("Role to assign").setRequired(true)
+    )
+    .addIntegerOption((opt) =>
+      opt
+        .setName("duration")
+        .setDescription("How long to assign the role")
+        .setRequired(true)
+        .setMinValue(1)
+    )
+    .addStringOption((opt) =>
+      opt
+        .setName("unit")
+        .setDescription("Time unit (default: hours)")
+        .addChoices(
+          { name: "Minutes", value: "minutes" },
+          { name: "Hours", value: "hours" },
+          { name: "Days", value: "days" },
+          { name: "Weeks", value: "weeks" },
+          { name: "Months", value: "months" }
+        )
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+  new SlashCommandBuilder()
+    .setName("timedrolelist")
+    .setDescription("Show all active timed roles")
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+  new SlashCommandBuilder()
+    .setName("timedroleremove")
+    .setDescription("Remove a timed role from a user early")
+    .addUserOption((opt) =>
+      opt.setName("user").setDescription("User to remove the role from").setRequired(true)
+    )
+    .addRoleOption((opt) =>
+      opt.setName("role").setDescription("Role to remove").setRequired(true)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
 ].map((c) => c.toJSON());
 
 module.exports = commands;

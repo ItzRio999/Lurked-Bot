@@ -16,7 +16,7 @@ const { generalLimiter } = require('./middleware/rateLimiter');
 // Lazy-load feature modules (loaded on-demand for better memory efficiency on Pi)
 let ticketsModule, staffTrackingModule, boostTrackingModule;
 let welcomeModule, auditLogsModule, pollsModule, giveawaysModule, automodModule, ticketEnhancementsModule;
-let verificationModule, dropSyncModule, inviteTrackingModule;
+let verificationModule, dropSyncModule, inviteTrackingModule, timedRolesModule;
 
 // In-memory invite cache for tracking which invite a new member used
 let inviteCache = new Map();
@@ -47,7 +47,8 @@ const data = loadJson(DATA_PATH, {
   message_cache: {},
   automod_strikes: {},
   giveaways: {},
-  invite_tracking: { inviters: {}, joins: {} }
+  invite_tracking: { inviters: {}, joins: {} },
+  timed_roles: []
 });
 
 // Initialize Discord client with optimizations for Raspberry Pi
@@ -357,6 +358,15 @@ client.on("clientReady", async () => {
 
   // Initial inactive ticket check
   ticketEnhancementsModule.checkInactiveTickets(client, data, DATA_PATH, config);
+
+  // Check for expired timed roles every 60 seconds
+  timedRolesModule = require("./features/timedRoles");
+  setInterval(() => {
+    timedRolesModule.checkTimedRoles(client, data, DATA_PATH, config);
+  }, 60000);
+
+  // Initial timed roles check
+  timedRolesModule.checkTimedRoles(client, data, DATA_PATH, config);
 });
 
 client.on("messageCreate", async (message) => {

@@ -24,6 +24,7 @@ const { createVerificationPanel, startVerification, handleVerificationAnswer, sh
 const { showSecurityDashboard, showRecentLogs } = require("../features/securityLogs");
 const { showEmbedModal, handleEmbedSubmit, showAdvancedEmbedModal, handleAdvancedEmbedSubmit } = require("../features/embedCreator");
 const { showInviteStats, showInviteLeaderboard } = require("../features/inviteTracking");
+const { assignTimedRole, removeTimedRole, listTimedRoles } = require("../features/timedRoles");
 const { hasStaffRole } = require("../utils/permissions");
 
 async function handleInteraction(interaction, config, data, configPath, dataPath, io) {
@@ -1586,6 +1587,19 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
 
   if (name === "inviteleaderboard") {
     return showInviteLeaderboard(interaction, data, config);
+  }
+
+  // ============== TIMED ROLES ==============
+  if (name === "timedrole") {
+    return assignTimedRole(interaction, data, dataPath, config);
+  }
+
+  if (name === "timedrolelist") {
+    return listTimedRoles(interaction, data);
+  }
+
+  if (name === "timedroleremove") {
+    return removeTimedRole(interaction, data, dataPath, config);
   }
 
 }

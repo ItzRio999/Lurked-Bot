@@ -120,6 +120,26 @@ async function assignTimedRole(interaction, data, dataPath, config) {
 
   await interaction.editReply({ embeds: [embed] });
 
+  // DM the user to let them know they received a timed role
+  try {
+    const user = await interaction.client.users.fetch(targetUser.id);
+    const dmEmbed = new EmbedBuilder()
+      .setTitle("You Received a Timed Role")
+      .setDescription(
+        `You've been given the **${role.name}** role in **${interaction.guild.name}**.`
+      )
+      .addFields(
+        { name: "Duration", value: `${duration} ${unit}`, inline: true },
+        { name: "Expires", value: `<t:${expireTimestamp}:F> (<t:${expireTimestamp}:R>)`, inline: true },
+        { name: "Assigned By", value: interaction.user.tag, inline: true }
+      )
+      .setColor(0x57F287)
+      .setTimestamp();
+    await user.send({ embeds: [dmEmbed] }).catch(() => {});
+  } catch (error) {
+    // Can't DM user, not critical
+  }
+
   // Log to audit channel
   const logEmbed = new EmbedBuilder()
     .setTitle("Timed Role Assigned")

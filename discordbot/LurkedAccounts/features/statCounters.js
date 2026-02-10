@@ -126,6 +126,13 @@ async function updateStatCounters(guild, config) {
     return;
   }
 
+  // Fetch fresh guild data to ensure memberCount is accurate
+  try {
+    await guild.fetch();
+  } catch (error) {
+    console.error(`Error fetching guild data for stat counters:`, error);
+  }
+
   const counters = config.stat_counters.counters;
 
   for (const counter of counters) {

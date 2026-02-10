@@ -23,6 +23,8 @@ const { setTicketPriority, addTicketNote, viewTicketNotes, showRatingModal, hand
 const { createVerificationPanel, startVerification, handleVerificationAnswer, showVerificationStats, configureVerification, setVerificationChannel, manualVerify, unverifyUser } = require("../features/verification");
 const { showSecurityDashboard, showRecentLogs } = require("../features/securityLogs");
 const { showEmbedModal, handleEmbedSubmit, showAdvancedEmbedModal, handleAdvancedEmbedSubmit } = require("../features/embedCreator");
+const { showInviteStats, showInviteLeaderboard } = require("../features/inviteTracking");
+const { hasStaffRole } = require("../utils/permissions");
 
 async function handleInteraction(interaction, config, data, configPath, dataPath, io) {
   // Handle modal submissions
@@ -1564,6 +1566,26 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
     if (subcommand === "advanced") {
       return showAdvancedEmbedModal(interaction);
     }
+  }
+
+  // ============== INVITE TRACKING ==============
+  if (name === "invites") {
+    const targetUser = interaction.options.getUser("user");
+    // Anyone can check their own invites; staff required for checking others
+    if (targetUser && targetUser.id !== interaction.user.id && !hasStaffRole(member, config) && !isOwnerOrCoowner(member, config)) {
+      const embed = addLogo(
+        new EmbedBuilder()
+          .setDescription("❌ You can only check your own invite stats. Staff can check other users.")
+          .setColor(0xED4245),
+        config
+      );
+      return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+    }
+    return showInviteStats(interaction, data, config);
+  }
+
+  if (name === "inviteleaderboard") {
+    return showInviteLeaderboard(interaction, data, config);
   }
 
 }

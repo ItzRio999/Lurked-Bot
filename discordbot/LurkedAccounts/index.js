@@ -16,7 +16,10 @@ const { generalLimiter } = require('./middleware/rateLimiter');
 // Lazy-load feature modules (loaded on-demand for better memory efficiency on Pi)
 let ticketsModule, staffTrackingModule, boostTrackingModule;
 let welcomeModule, auditLogsModule, pollsModule, giveawaysModule, automodModule, ticketEnhancementsModule;
-let verificationModule, dropSyncModule;
+let verificationModule, dropSyncModule, inviteTrackingModule;
+
+// In-memory invite cache for tracking which invite a new member used
+let inviteCache = new Map();
 
 // Load configuration and data
 const config = loadJson(CONFIG_PATH, null);
@@ -43,7 +46,8 @@ const data = loadJson(DATA_PATH, {
   polls: {},
   message_cache: {},
   automod_strikes: {},
-  giveaways: {}
+  giveaways: {},
+  invite_tracking: { inviters: {}, joins: {} }
 });
 
 // Initialize Discord client with optimizations for Raspberry Pi
@@ -55,6 +59,7 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.GuildPresences, // For member status tracking
+    GatewayIntentBits.GuildInvites, // For invite link tracking
   ],
   partials: [
     Partials.GuildMember,
@@ -275,6 +280,18 @@ client.on("clientReady", async () => {
     console.error('⚠️ Error fetching guild members:', error);
   }
 
+  // Cache guild invites for invite tracking
+  try {
+    inviteTrackingModule = require("./features/inviteTracking");
+    for (const guild of client.guilds.cache.values()) {
+      const guildInvites = await inviteTrackingModule.cacheInvites(guild);
+      inviteCache.set(guild.id, guildInvites);
+      console.log(`📨 Cached ${guildInvites.size} invites from ${guild.name}`);
+    }
+  } catch (error) {
+    console.error('⚠️ Error caching invites:', error);
+  }
+
   // Enhanced rotating status messages with Rich Presence
   const statuses = [
     { name: "your support tickets 🎫", type: ActivityType.Watching, state: "Managing Tickets" },
@@ -428,6 +445,16 @@ client.on("guildMemberAdd", async (member) => {
   await welcomeModule.sendWelcomeMessage(member, config);
   await auditLogsModule.logMemberJoin(member, config);
 
+  // Track which invite was used
+  if (!inviteTrackingModule) inviteTrackingModule = require("./features/inviteTracking");
+  try {
+    const guildCache = inviteCache.get(member.guild.id) || new Map();
+    const updatedCache = await inviteTrackingModule.handleMemberJoin(member, guildCache, data, DATA_PATH);
+    inviteCache.set(member.guild.id, updatedCache);
+  } catch (error) {
+    console.error("⚠️ Error tracking invite:", error);
+  }
+
   // Handle verification system for new members
   await verificationModule.handleMemberJoin(member, config, data, DATA_PATH);
 });
@@ -487,6 +514,21 @@ client.on("messageUpdate", async (before, after) => {
     if (!auditLogsModule) auditLogsModule = require("./features/auditLogs");
     await auditLogsModule.logMessageEdit(before, after, config);
   }
+});
+
+// Keep invite cache fresh when invites are created or deleted
+client.on("inviteCreate", async (invite) => {
+  if (!invite.guild) return;
+  if (!inviteTrackingModule) inviteTrackingModule = require("./features/inviteTracking");
+  const updatedCache = await inviteTrackingModule.cacheInvites(invite.guild);
+  inviteCache.set(invite.guild.id, updatedCache);
+});
+
+client.on("inviteDelete", async (invite) => {
+  if (!invite.guild) return;
+  if (!inviteTrackingModule) inviteTrackingModule = require("./features/inviteTracking");
+  const updatedCache = await inviteTrackingModule.cacheInvites(invite.guild);
+  inviteCache.set(invite.guild.id, updatedCache);
 });
 
 // Interaction handler

@@ -839,6 +839,21 @@ const commands = [
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
 
+  // ============== INVITE TRACKING ==============
+  new SlashCommandBuilder()
+    .setName("invites")
+    .setDescription("Check invite stats for a user")
+    .addUserOption((opt) =>
+      opt
+        .setName("user")
+        .setDescription("User to check (leave empty for yourself)")
+    ),
+
+  new SlashCommandBuilder()
+    .setName("inviteleaderboard")
+    .setDescription("Show the top inviters in the server")
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
 ].map((c) => c.toJSON());
 
 module.exports = commands;

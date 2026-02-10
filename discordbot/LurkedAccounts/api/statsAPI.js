@@ -459,4 +459,93 @@ router.get('/stats/server', verifyAuth, verifyAdmin, async (req, res) => {
   }
 });
 
+// GET /api/bot/stats/invites - Get invite tracking statistics (admin only)
+router.get('/stats/invites', verifyAuth, verifyAdmin, async (req, res) => {
+  try {
+    const data = req.app.locals.data;
+    const client = req.app.locals.client;
+    const config = req.app.locals.config;
+
+    if (!data) {
+      return res.status(500).json({
+        success: false,
+        error: 'Bot data not loaded'
+      });
+    }
+
+    const tracking = data.invite_tracking || { inviters: {}, joins: {} };
+
+    // Build leaderboard
+    const leaderboard = [];
+    for (const [userId, codes] of Object.entries(tracking.inviters)) {
+      let total = 0;
+      const codeBreakdown = [];
+      for (const [code, members] of Object.entries(codes)) {
+        total += members.length;
+        codeBreakdown.push({ code, count: members.length, members });
+      }
+      codeBreakdown.sort((a, b) => b.count - a.count);
+      leaderboard.push({ userId, total, codes: codeBreakdown });
+    }
+    leaderboard.sort((a, b) => b.total - a.total);
+
+    // Resolve usernames from guild cache
+    const guildId = config?.guild_ids?.[0];
+    const guild = guildId ? client.guilds.cache.get(guildId) : client.guilds.cache.first();
+
+    const resolveUser = (id) => {
+      if (!guild) return { id, username: id };
+      const member = guild.members.cache.get(id);
+      return {
+        id,
+        username: member?.user?.username || id,
+        displayName: member?.displayName || member?.user?.username || id,
+        avatar: member?.user?.displayAvatarURL({ size: 64 }) || null,
+      };
+    };
+
+    // Enrich leaderboard with user info
+    const enrichedLeaderboard = leaderboard.map(entry => ({
+      ...entry,
+      user: resolveUser(entry.userId),
+      codes: entry.codes.map(c => ({
+        ...c,
+        members: c.members.map(resolveUser),
+      })),
+    }));
+
+    // Build recent joins list
+    const recentJoins = Object.entries(tracking.joins)
+      .map(([userId, info]) => ({
+        user: resolveUser(userId),
+        invitedBy: resolveUser(info.invited_by),
+        code: info.code,
+        joinedAt: info.joined_at,
+      }))
+      .sort((a, b) => new Date(b.joinedAt) - new Date(a.joinedAt))
+      .slice(0, 50);
+
+    const totalInvites = leaderboard.reduce((sum, e) => sum + e.total, 0);
+    const totalTrackedJoins = Object.keys(tracking.joins).length;
+
+    res.json({
+      success: true,
+      data: {
+        totalInvites,
+        totalTrackedJoins,
+        totalInviters: leaderboard.length,
+        leaderboard: enrichedLeaderboard,
+        recentJoins,
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching invite stats:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch invite statistics'
+    });
+  }
+});
+
 module.exports = router;

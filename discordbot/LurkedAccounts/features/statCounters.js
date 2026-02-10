@@ -78,8 +78,8 @@ const STAT_TYPES = {
   }
 };
 
-// Update interval (5 minutes to avoid rate limits)
-const UPDATE_INTERVAL = 5 * 60 * 1000;
+// Update interval (2 minutes to avoid rate limits)
+const UPDATE_INTERVAL = 2 * 60 * 1000;
 
 // Track update intervals per guild
 const updateIntervals = new Map();

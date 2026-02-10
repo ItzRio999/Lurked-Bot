@@ -921,6 +921,22 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
           inline: true
         },
         {
+          name: "📨 Invite Tracking",
+          value:
+            "`/invites` - Your invite stats\n" +
+            "`/invites @user` - User's stats\n" +
+            "`/inviteleaderboard` - Top inviters",
+          inline: true
+        },
+        {
+          name: "⏰ Timed Roles",
+          value:
+            "`/timedrole` - Assign temp role\n" +
+            "`/timedrolelist` - View active\n" +
+            "`/timedroleremove` - Remove early",
+          inline: true
+        },
+        {
           name: "⚙️ Configuration",
           value:
             "`/quicksetup tickets` - Fast setup\n" +

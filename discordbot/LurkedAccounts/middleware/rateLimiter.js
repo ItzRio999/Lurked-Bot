@@ -14,6 +14,7 @@ const generalLimiter = rateLimit({
   },
   standardHeaders: true, // Return rate limit info in headers
   legacyHeaders: false,
+  validate: { trustProxy: false }, // Disable validation since we properly configure trust proxy in index.js
 });
 
 // Strict limiter for authentication endpoints - 5 attempts per 15 minutes
@@ -24,6 +25,7 @@ const authLimiter = rateLimit({
     error: 'Too many authentication attempts, please try again later.',
   },
   skipSuccessfulRequests: true, // Don't count successful requests
+  validate: { trustProxy: false },
 });
 
 // Upload limiter - 10 uploads per hour
@@ -33,6 +35,7 @@ const uploadLimiter = rateLimit({
   message: {
     error: 'Upload limit exceeded. Please try again later.',
   },
+  validate: { trustProxy: false },
 });
 
 // Delete limiter - 20 deletions per hour
@@ -42,6 +45,7 @@ const deleteLimiter = rateLimit({
   message: {
     error: 'Delete limit exceeded. Please try again later.',
   },
+  validate: { trustProxy: false },
 });
 
 module.exports = {

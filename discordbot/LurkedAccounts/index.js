@@ -81,8 +81,9 @@ const client = new Client({
 const app = express();
 
 // Trust proxy - required when behind Cloudflare Tunnel or reverse proxy
-// This allows express-rate-limit to correctly identify client IPs
-app.set('trust proxy', true);
+// Trust only the first proxy hop (Cloudflare) for security
+// See: https://expressjs.com/en/guide/behind-proxies.html
+app.set('trust proxy', 1);
 
 const httpServer = http.createServer(app);
 const API_PORT = process.env.API_PORT || 3002;

@@ -234,6 +234,11 @@ client.on("clientReady", async () => {
   app.use('/api/bot', ticketsAPI);
   console.log('✅ Tickets API routes loaded');
 
+  // Load Tweaks API routes
+  const tweaksAPI = require('./api/tweaksAPI');
+  app.use('/api', tweaksAPI);
+  console.log('✅ Tweaks API routes loaded');
+
   // Log all registered routes for debugging
   console.log('\n📍 Registered API routes:');
   if (app._router && app._router.stack) {
@@ -266,7 +271,10 @@ client.on("clientReady", async () => {
         'GET /api/drops',
         'POST /api/upload-drop',
         'DELETE /api/drop/:dropId',
-        'GET /api/team'
+        'GET /api/team',
+        'GET /api/tweaks/info',
+        'GET /api/tweaks/download',
+        'POST /api/tweaks/upload'
       ]
     });
   });

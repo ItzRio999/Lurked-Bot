@@ -41,7 +41,7 @@ async function startGiveaway(interaction, data, dataPath) {
       `**Hosted by:** ${interaction.user}`
     )
     .setColor(0x522081)
-    .setAuthor({ name: "Giveaway", iconURL: "https://cdn-icons-png.flaticon.com/512/3227/3227447.png" })
+    .setAuthor({ name: "Giveaway", iconURL: "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/72x72/1f52e.png" })
     .setFooter({ text: `${winners} winner${winners !== 1 ? "s" : ""} | Ends` })
     .setTimestamp(endTime);
 
@@ -51,7 +51,7 @@ async function startGiveaway(interaction, data, dataPath) {
     new ButtonBuilder()
       .setCustomId("giveaway_enter")
       .setLabel("Enter Giveaway")
-      .setStyle(ButtonStyle.Success)
+      .setStyle(ButtonStyle.Primary)
       .setEmoji("🎉")
   );
 
@@ -260,7 +260,7 @@ async function finalizeGiveaway(message, giveaway, data, dataPath, client) {
       `**Hosted by:** <@${giveaway.host_id}>`
     )
     .setColor(0x522081)
-    .setAuthor({ name: "Giveaway Ended", iconURL: "https://cdn-icons-png.flaticon.com/512/3227/3227447.png" })
+    .setAuthor({ name: "Giveaway Ended", iconURL: "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/72x72/1f52e.png" })
     .setFooter({ text: "Ended" })
     .setTimestamp();
 
@@ -328,7 +328,7 @@ async function listGiveaways(interaction, data) {
   const embed = new EmbedBuilder()
     .setTitle("Server Giveaways")
     .setColor(0x522081)
-    .setAuthor({ name: "Giveaway Manager", iconURL: "https://cdn-icons-png.flaticon.com/512/3227/3227447.png" })
+    .setAuthor({ name: "Giveaway Manager", iconURL: "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/72x72/1f52e.png" })
     .setTimestamp();
 
   if (activeGiveaways.length > 0) {

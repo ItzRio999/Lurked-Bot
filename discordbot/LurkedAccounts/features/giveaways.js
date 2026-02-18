@@ -266,7 +266,13 @@ async function finalizeGiveaway(message, giveaway, data, dataPath, client) {
 
   if (giveaway.image_url) endedEmbed.setImage(giveaway.image_url);
 
-  await message.edit({ embeds: [endedEmbed], components: [] });
+  if (message) {
+    try {
+      await message.edit({ embeds: [endedEmbed], components: [] });
+    } catch (err) {
+      if (err.code !== 10008) throw err; // only swallow "Unknown Message"
+    }
+  }
 
   // Announce winners
   if (winners.length > 0) {
@@ -301,7 +307,12 @@ async function checkGiveaways(client, data, dataPath) {
   for (const giveaway of expiredGiveaways) {
     try {
       const channel = await client.channels.fetch(giveaway.channel_id);
-      const message = await channel.messages.fetch(giveaway.message_id);
+      let message = null;
+      try {
+        message = await channel.messages.fetch(giveaway.message_id);
+      } catch (err) {
+        if (err.code !== 10008) throw err; // only swallow "Unknown Message"
+      }
       await finalizeGiveaway(message, giveaway, data, dataPath, client);
       saveJson(dataPath, data);
     } catch (error) {

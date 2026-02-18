@@ -96,7 +96,12 @@ router.post('/giveaways/:messageId/end', verifyAuth, verifyAdmin, async (req, re
 
     const { finalizeGiveaway } = require('../features/giveaways');
     const channel = await client.channels.fetch(giveaway.channel_id);
-    const message = await channel.messages.fetch(messageId);
+    let message = null;
+    try {
+      message = await channel.messages.fetch(messageId);
+    } catch (err) {
+      if (err.code !== 10008) throw err; // only swallow "Unknown Message"
+    }
     await finalizeGiveaway(message, giveaway, data, DATA_PATH, client);
 
     res.json({ success: true, message: 'Giveaway ended successfully' });

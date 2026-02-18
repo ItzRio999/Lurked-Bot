@@ -36,7 +36,6 @@ async function startGiveaway(interaction, data, dataPath) {
     .setTitle(prize)
     .setDescription(
       (description ? `${description}\n\n` : "") +
-      `React with 🎉 to enter\n\n` +
       `**Winners:** ${winners}\n` +
       `**Ends:** <t:${endTimestamp}:F> (<t:${endTimestamp}:R>)\n` +
       `**Hosted by:** ${interaction.user}`
@@ -57,7 +56,6 @@ async function startGiveaway(interaction, data, dataPath) {
   );
 
   const message = await interaction.channel.send({ embeds: [embed], components: [row] });
-  await message.react("🎉");
 
   // Store giveaway data
   if (!data.giveaways) data.giveaways = [];
@@ -186,17 +184,7 @@ async function rerollGiveaway(interaction, data, dataPath) {
   await interaction.deferReply();
 
   try {
-    const channel = await interaction.client.channels.fetch(giveaway.channel_id);
-
-    // Get fresh entries from reactions
-    const message = await channel.messages.fetch(giveaway.message_id);
-    const reaction = message.reactions.cache.get("🎉");
-    let entries = [];
-
-    if (reaction) {
-      const users = await reaction.users.fetch();
-      entries = users.filter(u => !u.bot).map(u => u.id);
-    }
+    const entries = giveaway.entries || [];
 
     if (entries.length === 0) {
       const embed = new EmbedBuilder()
@@ -240,17 +228,7 @@ async function rerollGiveaway(interaction, data, dataPath) {
 async function finalizeGiveaway(message, giveaway, data, dataPath, client) {
   giveaway.ended = true;
 
-  // Get entries from reactions
-  const reaction = message.reactions.cache.get("🎉");
-  let entries = [];
-
-  if (reaction) {
-    const users = await reaction.users.fetch();
-    entries = users.filter(u => !u.bot).map(u => u.id);
-  }
-
-  // Update entries in data
-  giveaway.entries = entries;
+  const entries = giveaway.entries || [];
 
   let winners = [];
   let winnerMentions = "No valid entries";
@@ -396,4 +374,5 @@ module.exports = {
   rerollGiveaway,
   checkGiveaways,
   listGiveaways,
+  finalizeGiveaway,
 };

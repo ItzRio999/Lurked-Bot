@@ -92,7 +92,7 @@ async function createVerificationPanel(interaction, config, configPath) {
           "• You have 3 attempts to answer correctly\n\n" +
           "Click **Verify** to begin!"
       )
-      .setColor(0x5865F2)
+      .setColor(0x522081)
       .setFooter({ text: "Verification System" })
       .setTimestamp(),
     config
@@ -187,7 +187,7 @@ async function startVerification(interaction, config, data, dataPath) {
         `Click the button with the correct answer.\n` +
         `You have **3 attempts**.`
     )
-    .setColor(0x5865F2)
+    .setColor(0x522081)
     .setFooter({ text: "Attempts: 0/3" });
 
   return interaction.reply({
@@ -319,7 +319,7 @@ async function handleVerificationAnswer(interaction, config, data, dataPath) {
           `**${newCaptcha.question} = ?**\n\n` +
           `Attempts remaining: **${attempt.maxAttempts - attempt.attempts}**`
       )
-      .setColor(0xFEE75C)
+      .setColor(0x522081)
       .setFooter({ text: `Attempts: ${attempt.attempts}/${attempt.maxAttempts}` });
 
     return interaction.update({
@@ -349,7 +349,7 @@ async function handleMemberJoin(member, config, data, dataPath) {
               ? `Head to <#${verifyChannel}> and click the Verify button.`
               : "Find the verification channel and click the Verify button.")
         )
-        .setColor(0x5865F2)
+        .setColor(0x522081)
         .setTimestamp();
 
       await member.send({ embeds: [embed] });
@@ -399,7 +399,7 @@ async function showVerificationStats(interaction, data, config) {
           inline: true,
         }
       )
-      .setColor(0x5865F2)
+      .setColor(0x522081)
       .setTimestamp(),
     config
   );

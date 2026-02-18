@@ -147,8 +147,8 @@ function generatePerformanceBar(percentage) {
 // Get color based on performance
 function getPerformanceColor(percentage) {
   if (percentage >= 80) return 0x57F287; // Green - Excellent
-  if (percentage >= 60) return 0xFEE75C; // Yellow - Good
-  if (percentage >= 40) return 0xF26522; // Orange - Fair
+  if (percentage >= 60) return 0x522081; // Yellow - Good
+  if (percentage >= 40) return 0x522081; // Orange - Fair
   return 0xED4245; // Red - Poor
 }
 
@@ -189,7 +189,7 @@ async function showStaffReport(interaction, data, config) {
   const embed = new EmbedBuilder()
     .setTitle(`Staff Activity Report`)
     .setDescription(`Activity over the last **${days} days**`)
-    .setColor(0x5865F2)
+    .setColor(0x522081)
     .setTimestamp();
 
   addLogo(embed, config);
@@ -272,7 +272,7 @@ async function showStaffStats(interaction, data, config) {
   const embed = new EmbedBuilder()
     .setTitle(`Staff Statistics - ${user.tag}`)
     .setDescription(`Activity overview for the last **${days} days**`)
-    .setColor(0x5865F2)
+    .setColor(0x522081)
     .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 256 }))
     .setTimestamp();
 
@@ -417,7 +417,7 @@ async function generateWeeklyReport(client, config, data, dataPath) {
   const embed = new EmbedBuilder()
     .setTitle(`Weekly Staff Report`)
     .setDescription(`Automated weekly activity report`)
-    .setColor(0x5865F2)
+    .setColor(0x522081)
     .setTimestamp();
 
   addLogo(embed, config);

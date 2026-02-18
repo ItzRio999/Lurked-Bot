@@ -11,7 +11,7 @@ const { saveJson, addLogo } = require("../utils/fileManager");
 const DEFAULT_ROLES_PANEL = {
   title: "Role Selection",
   description: "Click the buttons below to toggle notification roles.",
-  color: 0x5865F2,
+  color: 0x522081,
   footer: "Click to toggle roles on/off",
   thumbnail: null,
   image: null,

@@ -13,7 +13,7 @@ const { saveJson, addLogo } = require("../utils/fileManager");
 const DEFAULT_PANEL = {
   title: "Support Tickets",
   description: "Click a button below to open a support ticket. A private channel will be created for you.",
-  color: 0x5865F2,
+  color: 0x522081,
   footer: "Click a button to create a ticket",
   thumbnail: null,
   image: null,
@@ -220,7 +220,7 @@ async function createTicketFromButton(interaction, category, config, data, dataP
         { name: "Opened", value: `<t:${Math.floor(Date.parse(data.tickets[channel.id].created_at) / 1000)}:R>`, inline: true },
         { name: "User", value: `${interaction.user.tag}`, inline: true }
       )
-      .setColor(0x5865F2)
+      .setColor(0x522081)
       .setFooter({ text: "Use the buttons below to manage this ticket" })
       .setTimestamp();
 
@@ -309,7 +309,7 @@ async function handleClose(interaction, config, data, dataPath) {
       "• Log the ticket in the ticket log channel\n\n" +
       "This action cannot be undone."
     )
-    .setColor(0xFEE75C)
+    .setColor(0x522081)
     .setFooter({ text: `Ticket #${ticket.ticket_num}` })
     .setTimestamp();
 
@@ -338,7 +338,7 @@ async function handleCloseConfirm(interaction, config, data, dataPath) {
   const embed = new EmbedBuilder()
     .setTitle("Ticket Closing")
     .setDescription("This ticket is being closed. Channel will be deleted in 5 seconds. Transcript will be sent to the ticket creator's DMs.")
-    .setColor(0xFEE75C)
+    .setColor(0x522081)
     .setFooter({ text: "Thank you for contacting support" })
     .setTimestamp();
 
@@ -357,7 +357,7 @@ async function handleCloseConfirm(interaction, config, data, dataPath) {
 async function handleCloseCancel(interaction) {
   const cancelEmbed = new EmbedBuilder()
     .setDescription("❌ Ticket close cancelled.")
-    .setColor(0x5865F2);
+    .setColor(0x522081);
 
   await interaction.update({ embeds: [cancelEmbed], components: [] });
 }
@@ -442,7 +442,7 @@ async function closeTicket(channel, closedBy, config, data, dataPath) {
           { name: "Closed", value: `<t:${Math.floor(closedDate / 1000)}:R>`, inline: true },
           { name: "\u200b", value: "\u200b", inline: true }
         )
-        .setColor(0x5865F2)
+        .setColor(0x522081)
         .setFooter({ text: "HTML & TXT transcripts attached - Open .html in browser" })
         .setTimestamp();
 

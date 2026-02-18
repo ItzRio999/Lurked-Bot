@@ -199,7 +199,7 @@ async function removeTimedRole(interaction, data, dataPath, config) {
       .setDescription(
         `Your timed role **${role.name}** in **${interaction.guild.name}** has been removed early by an admin.`
       )
-      .setColor(0xF59E42)
+      .setColor(0x522081)
       .setTimestamp();
     await user.send({ embeds: [dmEmbed] }).catch(() => {});
   } catch (error) {
@@ -222,7 +222,7 @@ async function removeTimedRole(interaction, data, dataPath, config) {
       { name: "Role", value: `${role} (${role.id})`, inline: true },
       { name: "Originally Assigned By", value: mention(entry.assigned_by), inline: true }
     )
-    .setColor(0xF59E42)
+    .setColor(0x522081)
     .setTimestamp();
 
   await sendLog(interaction.guild, config, logEmbed);
@@ -253,7 +253,7 @@ async function listTimedRoles(interaction, data) {
   const embed = new EmbedBuilder()
     .setTitle(`Active Timed Roles (${active.length})`)
     .setDescription(description.length > 4000 ? description.slice(0, 4000) + "\n..." : description)
-    .setColor(0x5865F2)
+    .setColor(0x522081)
     .setTimestamp();
 
   await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
@@ -296,7 +296,7 @@ async function checkTimedRoles(client, data, dataPath, config) {
           .setDescription(
             `Your timed role **${roleName}** in **${guild.name}** has expired and been removed.`
           )
-          .setColor(0xF59E42)
+          .setColor(0x522081)
           .setTimestamp();
         await user.send({ embeds: [dmEmbed] }).catch(() => {});
       } catch (error) {

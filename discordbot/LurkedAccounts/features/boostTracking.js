@@ -73,7 +73,7 @@ async function showBoostLog(interaction, data) {
   const embed = new EmbedBuilder()
     .setTitle("Recent Boost Events")
     .setDescription(description)
-    .setColor(0x5865F2)
+    .setColor(0x522081)
     .setFooter({ text: `Showing ${entries.length} most recent event${entries.length !== 1 ? "s" : ""}` })
     .setTimestamp();
 
@@ -130,7 +130,7 @@ async function showCurrentBoosters(interaction, config, data) {
       { name: "Total Boosts", value: `${boostCount}`, inline: true },
       { name: "Active Boosters", value: `${boosters.size}`, inline: true }
     )
-    .setColor(0xF47FFF)
+    .setColor(0x522081)
     .setTimestamp();
 
   // Add top boosters section

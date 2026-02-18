@@ -56,7 +56,7 @@ async function nukeMessages(interaction, config) {
     const nukeEmbed = new EmbedBuilder()
       .setTitle("Channel Cleared")
       .setDescription(`Cleared by ${interaction.user}\n\n**${totalDeleted} message${totalDeleted !== 1 ? "s" : ""} deleted**${targetUser ? `\nTarget: ${targetUser}` : ""}`)
-      .setColor(0xFF4500)
+      .setColor(0x522081)
       .setFooter({ text: totalDeleted < amount ? `Stopped at ${totalDeleted} messages` : "Clear complete" })
       .setTimestamp();
 
@@ -123,7 +123,7 @@ async function timeoutUser(interaction, config) {
           { name: "Moderator", value: interaction.user.tag, inline: true },
           { name: "Reason", value: reason, inline: false }
         )
-        .setColor(0xFEE75C)
+        .setColor(0x522081)
         .setTimestamp();
 
       await targetUser.send({ embeds: [dmEmbed] }).catch(() => {});
@@ -139,7 +139,7 @@ async function timeoutUser(interaction, config) {
         { name: "Moderator", value: `${interaction.user}`, inline: true },
         { name: "Reason", value: reason, inline: false }
       )
-      .setColor(0xFEE75C)
+      .setColor(0x522081)
       .setFooter({ text: `User ID: ${targetUser.id}` })
       .setTimestamp();
 
@@ -242,7 +242,7 @@ async function kickUser(interaction, config) {
           { name: "Moderator", value: interaction.user.tag, inline: true },
           { name: "Reason", value: reason, inline: false }
         )
-        .setColor(0xF26522)
+        .setColor(0x522081)
         .setTimestamp();
 
       await targetUser.send({ embeds: [dmEmbed] }).catch(() => {});
@@ -260,7 +260,7 @@ async function kickUser(interaction, config) {
         { name: "\u200b", value: "\u200b", inline: true },
         { name: "Reason", value: reason, inline: false }
       )
-      .setColor(0xF26522)
+      .setColor(0x522081)
       .setFooter({ text: `User ID: ${targetUser.id}` })
       .setTimestamp();
 
@@ -392,7 +392,7 @@ async function softbanUser(interaction, config) {
           { name: "Messages Deleted", value: `${deleteMessages} day${deleteMessages !== 1 ? 's' : ''}`, inline: true },
           { name: "Reason", value: reason, inline: false }
         )
-        .setColor(0xF26522)
+        .setColor(0x522081)
         .setTimestamp();
 
       await targetUser.send({ embeds: [dmEmbed] }).catch(() => {});
@@ -418,7 +418,7 @@ async function softbanUser(interaction, config) {
         { name: "Messages Deleted", value: `${deleteMessages} day${deleteMessages !== 1 ? 's' : ''}`, inline: true },
         { name: "Reason", value: reason, inline: false }
       )
-      .setColor(0xF26522)
+      .setColor(0x522081)
       .setFooter({ text: `User ID: ${targetUser.id}` })
       .setTimestamp();
 

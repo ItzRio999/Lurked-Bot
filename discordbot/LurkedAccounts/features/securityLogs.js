@@ -332,7 +332,7 @@ async function showSecurityDashboard(interaction, data, config) {
   );
 
   const scoreColor =
-    securityScore >= 80 ? 0x57f287 : securityScore >= 50 ? 0xfee75c : 0xed4245;
+    securityScore >= 80 ? 0x57f287 : securityScore >= 50 ? 0x522081 : 0xed4245;
   const scoreEmoji = securityScore >= 80 ? "🟢" : securityScore >= 50 ? "🟡" : "🔴";
 
   const embed = addLogo(
@@ -470,7 +470,7 @@ async function showRecentLogs(interaction, data, config, alertsOnly = false) {
     new EmbedBuilder()
       .setTitle(alertsOnly ? "Security Alerts" : "Recent Security Logs")
       .setDescription(logText.substring(0, 4000))
-      .setColor(alertsOnly ? 0xed4245 : 0x5865f2)
+      .setColor(alertsOnly ? 0xed4245 : 0x522081)
       .setFooter({ text: `Showing ${recent.length} of ${filtered.length} logs` })
       .setTimestamp(),
     config
@@ -489,9 +489,9 @@ async function sendSecurityLogEmbed(guild, event, config) {
   if (!channel) return;
 
   const severityColors = {
-    [Severity.INFO]: 0x5865f2,
-    [Severity.WARNING]: 0xfee75c,
-    [Severity.ALERT]: 0xf26522,
+    [Severity.INFO]: 0x522081,
+    [Severity.WARNING]: 0x522081,
+    [Severity.ALERT]: 0x522081,
     [Severity.CRITICAL]: 0xed4245,
   };
 

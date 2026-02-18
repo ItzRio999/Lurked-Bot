@@ -30,8 +30,8 @@ async function setTicketPriority(interaction, data, dataPath) {
 
   const priorityColors = {
     low: 0x57F287,
-    medium: 0xFEE75C,
-    high: 0xF59E42,
+    medium: 0x522081,
+    high: 0x522081,
     urgent: 0xED4245
   };
 
@@ -100,7 +100,7 @@ async function addTicketNote(interaction, data, dataPath) {
       { name: "Added By", value: `${interaction.user}`, inline: true },
       { name: "Total Notes", value: `${ticket.notes.length}`, inline: true }
     )
-    .setColor(0x5865F2)
+    .setColor(0x522081)
     .setTimestamp();
 
   await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
@@ -120,7 +120,7 @@ async function viewTicketNotes(interaction, data) {
   if (!ticket.notes || ticket.notes.length === 0) {
     const embed = new EmbedBuilder()
       .setDescription("📝 No notes have been added to this ticket yet.")
-      .setColor(0x5865F2);
+      .setColor(0x522081);
     return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 
@@ -132,7 +132,7 @@ async function viewTicketNotes(interaction, data) {
   const embed = new EmbedBuilder()
     .setTitle("Ticket Notes")
     .setDescription(notesList)
-    .setColor(0x5865F2)
+    .setColor(0x522081)
     .setFooter({ text: `${ticket.notes.length} note${ticket.notes.length !== 1 ? 's' : ''}` })
     .setTimestamp();
 
@@ -157,7 +157,7 @@ async function requestTicketRating(channel, ticket, user, config) {
         { name: "Category", value: ticket.category || "General", inline: true },
         { name: "Response Time", value: ticket.claimed_by ? "Handled by staff" : "Unclaimed", inline: true }
       )
-      .setColor(0xFEE75C)
+      .setColor(0x522081)
       .setFooter({ text: "Your feedback helps us improve" })
       .setTimestamp();
 
@@ -357,7 +357,7 @@ async function handleTicketRating(interaction, data, dataPath, config) {
           { name: "Handled By", value: ticket.claimed_by ? `<@${ticket.claimed_by}>` : "Unclaimed", inline: true },
           { name: "Rated", value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: true }
         )
-        .setColor(rating >= 4 ? 0x57F287 : rating >= 3 ? 0xFEE75C : 0xED4245)
+        .setColor(rating >= 4 ? 0x57F287 : rating >= 3 ? 0x522081 : 0xED4245)
         .setTimestamp();
 
       // Add staff rating if provided
@@ -409,7 +409,7 @@ async function checkInactiveTickets(client, data, dataPath, config) {
             `**Threshold:** ${inactivityThreshold} hours\n\n` +
             `Channel will be deleted in 10 seconds.`
           )
-          .setColor(0xFEE75C)
+          .setColor(0x522081)
           .setTimestamp();
 
         await channel.send({ embeds: [embed] });
@@ -469,7 +469,7 @@ async function viewTicketStats(interaction, data, config) {
   if (tickets.length === 0) {
     const embed = new EmbedBuilder()
       .setDescription("📊 No ticket data available yet!")
-      .setColor(0x5865F2);
+      .setColor(0x522081);
     return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 
@@ -503,7 +503,7 @@ async function viewTicketStats(interaction, data, config) {
       { name: "\u200b", value: "\u200b", inline: true },
       { name: "Priority Breakdown", value: `🔴 Urgent: ${priorities.urgent}\n🟠 High: ${priorities.high}\n🟡 Medium: ${priorities.medium}\n🟢 Low: ${priorities.low}\n⚪ None: ${priorities.none}`, inline: false }
     )
-    .setColor(0x5865F2)
+    .setColor(0x522081)
     .setTimestamp();
 
   addLogo(embed, config);
@@ -654,7 +654,7 @@ async function addUserToTicket(interaction, data, dataPath, config) {
     // Send notification in ticket
     const notifEmbed = new EmbedBuilder()
       .setDescription(`👋 ${userToAdd} has been added to this ticket by ${interaction.user}`)
-      .setColor(0x5865F2);
+      .setColor(0x522081);
     await interaction.channel.send({ embeds: [notifEmbed] });
 
   } catch (error) {
@@ -760,7 +760,7 @@ async function listTicketParticipants(interaction, data, dataPath) {
   const embed = new EmbedBuilder()
     .setTitle(`Ticket #${ticket.ticket_num} - Participants`)
     .setDescription(description)
-    .setColor(0x5865F2)
+    .setColor(0x522081)
     .setFooter({ text: `Category: ${ticket.category}` })
     .setTimestamp();
 

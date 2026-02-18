@@ -107,7 +107,7 @@ async function showInviteStats(interaction, data, config) {
   const embed = new EmbedBuilder()
     .setTitle(`Invite Stats for ${targetUser.displayName}`)
     .setThumbnail(targetUser.displayAvatarURL({ size: 128 }))
-    .setColor(0x5865F2)
+    .setColor(0x522081)
     .setTimestamp();
 
   // Who invited this user
@@ -185,7 +185,7 @@ async function showInviteLeaderboard(interaction, data, config) {
   const embed = new EmbedBuilder()
     .setTitle("Invite Leaderboard")
     .setDescription(lines.join("\n"))
-    .setColor(0x5865F2)
+    .setColor(0x522081)
     .setFooter({ text: `Top ${top.length} inviter${top.length !== 1 ? "s" : ""}` })
     .setTimestamp();
 

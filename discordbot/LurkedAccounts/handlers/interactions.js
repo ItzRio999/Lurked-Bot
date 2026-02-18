@@ -274,7 +274,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
 
     const embed = new EmbedBuilder()
       .setTitle(`User Information - ${targetUser.tag}`)
-      .setColor(targetMember.displayHexColor || 0x5865F2)
+      .setColor(targetMember.displayHexColor || 0x522081)
       .setThumbnail(targetUser.displayAvatarURL({ dynamic: true, size: 256 }))
       .addFields(
         { name: "Username", value: targetUser.username, inline: true },
@@ -616,7 +616,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
           .setTitle("Ticket Buttons")
           .setDescription(buttonList)
           .setFooter({ text: `Total: ${panel.buttons.length}` })
-          .setColor(0x5865F2),
+          .setColor(0x522081),
         config
       );
       return interaction.reply({ embeds: [embed] });
@@ -816,7 +816,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
     const embed = new EmbedBuilder()
       .setTitle("Lurked Accounts Bot")
       .setDescription("Complete server management with tickets, verification, moderation, and more.")
-      .setColor(0x5865F2)
+      .setColor(0x522081)
       .addFields(
         {
           name: "🎫 Support Tickets",
@@ -1130,7 +1130,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
             { name: "✏️ Message Edit", value: getStatus(config.logging.message_edit), inline: true },
             { name: "🧹 Bulk Delete", value: getStatus(config.logging.message_bulk_delete), inline: true }
           )
-          .setColor(0x5865F2)
+          .setColor(0x522081)
           .setFooter({ text: "All logs require a log channel to be set with /setlogchannel" }),
         config
       );
@@ -1157,7 +1157,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
               { name: "✏️ Message Edit", value: getStatus(config.logging.message_edit), inline: true },
               { name: "🧹 Bulk Delete", value: getStatus(config.logging.message_bulk_delete), inline: true }
             )
-            .setColor(0x5865F2)
+            .setColor(0x522081)
             .setFooter({ text: "Use /logs config type:<type> enabled:<true/false> to change" }),
           config
         );
@@ -1395,7 +1395,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
       new EmbedBuilder()
         .setTitle(`Roles Updated - ${targetUser.tag}`)
         .setDescription(description)
-        .setColor(added.length > 0 ? 0x57F287 : 0xFEE75C),
+        .setColor(added.length > 0 ? 0x57F287 : 0x522081),
       config
     );
     return interaction.reply({ embeds: [embed] });
@@ -1483,7 +1483,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
       new EmbedBuilder()
         .setTitle(`Roles Updated - ${targetUser.tag}`)
         .setDescription(description)
-        .setColor(removed.length > 0 ? 0x57F287 : 0xFEE75C),
+        .setColor(removed.length > 0 ? 0x57F287 : 0x522081),
       config
     );
     return interaction.reply({ embeds: [embed] });
@@ -1504,7 +1504,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
         const embed = addLogo(
           new EmbedBuilder()
             .setDescription("No security logs found")
-            .setColor(0x5865f2),
+            .setColor(0x522081),
           config
         );
         return interaction.reply({ embeds: [embed], ephemeral: true });
@@ -1548,7 +1548,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
         new EmbedBuilder()
           .setTitle(alertsOnly ? "Security Alerts" : "Recent Security Logs")
           .setDescription(logText.substring(0, 4000) || "No logs found")
-          .setColor(alertsOnly ? 0xED4245 : 0x5865f2)
+          .setColor(alertsOnly ? 0xED4245 : 0x522081)
           .setFooter({ text: `Showing ${recent.length} of ${filtered.length} logs` })
           .setTimestamp(),
         config

@@ -25,7 +25,7 @@ async function logMemberJoin(member, config) {
       },
       { name: "Total Members", value: `${member.guild.memberCount}`, inline: true }
     )
-    .setColor(isNew ? 0xFEE75C : 0x57F287)
+    .setColor(isNew ? 0x522081 : 0x57F287)
     .setThumbnail(member.user.displayAvatarURL({ size: 256 }))
     .setTimestamp();
 
@@ -87,7 +87,7 @@ async function logRoleUpdate(before, after, config) {
   const embed = new EmbedBuilder()
     .setTitle("Member Roles Updated")
     .setDescription(`${mention(after.id)} ${after.user.tag}`)
-    .setColor(0x5865F2)
+    .setColor(0x522081)
     .setThumbnail(after.user.displayAvatarURL())
     .setTimestamp();
 
@@ -166,7 +166,7 @@ async function logMessageEdit(before, after, config) {
         value: (after.content || "*[No content]*").slice(0, 1024),
       }
     )
-    .setColor(0xFEE75C)
+    .setColor(0x522081)
     .setTimestamp();
 
   if (after.author) {
@@ -218,7 +218,7 @@ async function logTimeout(guild, targetUser, moderator, duration, reason, config
       { name: "Expires", value: `<t:${Math.floor((Date.now() + duration) / 1000)}:R>`, inline: true },
       { name: "Reason", value: reason || "No reason provided", inline: false }
     )
-    .setColor(0xFEE75C)
+    .setColor(0x522081)
     .setThumbnail(targetUser.displayAvatarURL())
     .setFooter({ text: `Moderator ID: ${moderator.id}` })
     .setTimestamp();
@@ -267,7 +267,7 @@ async function logKick(guild, targetUser, moderator, reason, config) {
       { name: "\u200b", value: "\u200b", inline: true },
       { name: "Reason", value: reason || "No reason provided", inline: false }
     )
-    .setColor(0xF26522)
+    .setColor(0x522081)
     .setThumbnail(targetUser.displayAvatarURL())
     .setTimestamp();
 
@@ -315,7 +315,7 @@ async function logSoftban(guild, targetUser, moderator, reason, deleteMessageDay
       { name: "Messages Deleted", value: `${deleteMessageDays} day(s)`, inline: true },
       { name: "Reason", value: reason || "No reason provided", inline: false }
     )
-    .setColor(0xF26522)
+    .setColor(0x522081)
     .setThumbnail(targetUser.displayAvatarURL())
     .setTimestamp();
 
@@ -361,7 +361,7 @@ async function logBulkDelete(channel, count, moderator, targetUser, config) {
       { name: "Target User", value: targetUser ? `${targetUser.tag}` : "All users", inline: true },
       { name: "Moderator ID", value: moderator.id, inline: true }
     )
-    .setColor(0xFF4500)
+    .setColor(0x522081)
     .setTimestamp();
 
   await logChannel.send({ embeds: [embed] }).catch(console.error);

@@ -186,7 +186,7 @@ router.post('/tickets/:ticketId/messages', verifyAuth, verifyAdmin, async (req, 
     const sentMessage = await ticketChannel.send({
       content: message,
       embeds: [{
-        color: 0x8B5CF6,
+        color: 0x522081,
         footer: {
           text: `Sent by ${req.user.email} via Dashboard`
         },
@@ -267,7 +267,7 @@ router.post('/tickets/:ticketId/close', verifyAuth, verifyAdmin, async (req, res
       // Send closing message
       await ticketChannel.send({
         embeds: [{
-          color: 0xFF6B6B,
+          color: 0x522081,
           title: '🔒 Ticket Closed',
           description: 'This ticket has been closed by an administrator via the web dashboard.',
           timestamp: new Date().toISOString(),

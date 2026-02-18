@@ -40,7 +40,7 @@ async function startGiveaway(interaction, data, dataPath) {
       `**Ends:** <t:${endTimestamp}:F> (<t:${endTimestamp}:R>)\n` +
       `**Hosted by:** ${interaction.user}`
     )
-    .setColor(0xF59E42)
+    .setColor(0x522081)
     .setAuthor({ name: "Giveaway", iconURL: "https://cdn-icons-png.flaticon.com/512/3227/3227447.png" })
     .setFooter({ text: `${winners} winner${winners !== 1 ? "s" : ""} | Ends` })
     .setTimestamp(endTime);
@@ -259,7 +259,7 @@ async function finalizeGiveaway(message, giveaway, data, dataPath, client) {
       `**Total Entries:** ${entries.length}\n` +
       `**Hosted by:** <@${giveaway.host_id}>`
     )
-    .setColor(0x5865F2)
+    .setColor(0x522081)
     .setAuthor({ name: "Giveaway Ended", iconURL: "https://cdn-icons-png.flaticon.com/512/3227/3227447.png" })
     .setFooter({ text: "Ended" })
     .setTimestamp();
@@ -327,7 +327,7 @@ async function listGiveaways(interaction, data) {
 
   const embed = new EmbedBuilder()
     .setTitle("Server Giveaways")
-    .setColor(0xF59E42)
+    .setColor(0x522081)
     .setAuthor({ name: "Giveaway Manager", iconURL: "https://cdn-icons-png.flaticon.com/512/3227/3227447.png" })
     .setTimestamp();
 

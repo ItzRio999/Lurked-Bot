@@ -99,7 +99,7 @@ async function handleEmbedSubmit(interaction, config) {
   const imageUrl = interaction.fields.getTextInputValue("embed_image");
 
   // Parse color
-  let color = 0x5865F2; // Default Discord blue
+  let color = 0x522081; // Default Discord blue
   if (colorInput) {
     const cleanColor = colorInput.replace("#", "");
     const parsedColor = parseInt(cleanColor, 16);
@@ -247,7 +247,7 @@ async function handleAdvancedEmbedSubmit(interaction, config) {
   const imagesInput = interaction.fields.getTextInputValue("embed_images");
 
   // Parse color and footer
-  let color = 0x5865F2;
+  let color = 0x522081;
   let footer = "";
   if (colorFooterInput) {
     const parts = colorFooterInput.split("|").map(s => s.trim());

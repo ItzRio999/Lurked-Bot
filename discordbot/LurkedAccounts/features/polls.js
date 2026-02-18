@@ -39,7 +39,7 @@ async function createPoll(interaction, data, dataPath) {
       { name: "Ends", value: `<t:${endTimestamp}:R>`, inline: true },
       { name: "Created By", value: interaction.user.toString(), inline: true }
     )
-    .setColor(0x5865F2)
+    .setColor(0x522081)
     .setFooter({ text: "Vote by clicking the reactions below" })
     .setTimestamp();
 
@@ -120,7 +120,7 @@ async function endPoll(messageId, guild, data, dataPath) {
     // Update original poll message
     const originalEmbed = message.embeds[0];
     const updatedEmbed = EmbedBuilder.from(originalEmbed)
-      .setColor(0x808080)
+      .setColor(0x522081)
       .setFooter({ text: "This poll has ended - Results posted below" });
 
     await message.edit({ embeds: [updatedEmbed] }).catch(console.error);

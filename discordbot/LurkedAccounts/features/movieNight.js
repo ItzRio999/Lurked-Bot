@@ -30,7 +30,7 @@ async function announceMovie(interaction, config, data, dataPath, io) {
 
   const embed = new EmbedBuilder()
     .setTitle(title)
-    .setColor(0xFF6B6B)
+    .setColor(0x522081)
     .setTimestamp();
 
   const fields = [];
@@ -206,7 +206,7 @@ async function handleMovieButton(interaction, buttonType, data, dataPath) {
 
     const embed = new EmbedBuilder()
       .setDescription("Send a reaction during the movie:")
-      .setColor(0x5865F2);
+      .setColor(0x522081);
 
     await interaction.reply({
       embeds: [embed],
@@ -297,7 +297,7 @@ async function showSchedule(interaction, data) {
 
   const embed = new EmbedBuilder()
     .setTitle("Upcoming Movie Schedule")
-    .setColor(0xFF6B6B)
+    .setColor(0x522081)
     .setTimestamp()
     .setFooter({ text: `${upcoming.length} upcoming movie${upcoming.length !== 1 ? "s" : ""}` });
 
@@ -459,7 +459,7 @@ async function showStats(interaction, data) {
 
   const embed = new EmbedBuilder()
     .setTitle("Movie Night Statistics")
-    .setColor(0xFF6B6B)
+    .setColor(0x522081)
     .setDescription(`**Total Movies Hosted:** ${totalMovies}`)
     .addFields(
       { name: "Average Attendance", value: `${avgAttendance} viewers`, inline: true },
@@ -507,7 +507,7 @@ async function showStats(interaction, data) {
 async function showVolumeHelp(interaction) {
   const embed = new EmbedBuilder()
     .setTitle("Audio & Volume Troubleshooting")
-    .setColor(0x5865F2)
+    .setColor(0x522081)
     .addFields(
       {
         name: "Step 1: Discord User Volume",
@@ -579,7 +579,7 @@ async function createMoviePoll(interaction, data, dataPath) {
 
   const embed = new EmbedBuilder()
     .setTitle(question)
-    .setColor(0xFF6B6B)
+    .setColor(0x522081)
     .setFooter({ text: `Poll by ${interaction.user.username} - React to vote`, iconURL: interaction.user.displayAvatarURL() })
     .setTimestamp();
 
@@ -683,7 +683,7 @@ async function setEventLive(interaction, data, dataPath, io) {
         ? `**${event.title}** is now LIVE!\n\n🔗 Join URL: ${joinUrl}`
         : `**${event.title}** is no longer live.`
     )
-    .setColor(isLive ? 0xFF6B6B : 0x95A5A6)
+    .setColor(isLive ? 0x522081 : 0x522081)
     .setTimestamp();
 
   await interaction.reply({ embeds: [successEmbed] });

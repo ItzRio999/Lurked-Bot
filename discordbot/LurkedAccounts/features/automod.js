@@ -252,7 +252,7 @@ async function executeAction(message, violation, automodConfig) {
             { name: "Reason", value: violation.reason, inline: true },
             { name: "\u200b", value: "\u200b", inline: true }
           )
-          .setColor(0xFEE75C)
+          .setColor(0x522081)
           .setTimestamp();
 
         if (message.content) {
@@ -543,7 +543,7 @@ async function configureAutomod(interaction, config, configPath) {
           inline: true
         }
       )
-      .setColor(0x5865F2)
+      .setColor(0x522081)
       .setFooter({ text: "Use /automod <feature> to configure" })
       .setTimestamp();
 

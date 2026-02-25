@@ -25,6 +25,7 @@ const { showSecurityDashboard, showRecentLogs } = require("../features/securityL
 const { showEmbedModal, handleEmbedSubmit, showAdvancedEmbedModal, handleAdvancedEmbedSubmit } = require("../features/embedCreator");
 const { showInviteStats, showInviteLeaderboard } = require("../features/inviteTracking");
 const { assignTimedRole, removeTimedRole, listTimedRoles } = require("../features/timedRoles");
+const { submitVouch, setupVouchSystem } = require("../features/vouch");
 const { hasStaffRole } = require("../utils/permissions");
 
 async function handleInteraction(interaction, config, data, configPath, dataPath, io) {
@@ -1616,6 +1617,15 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
 
   if (name === "timedroleremove") {
     return removeTimedRole(interaction, data, dataPath, config);
+  }
+
+  // ============== VOUCH SYSTEM ==============
+  if (name === "vouch") {
+    return submitVouch(interaction, config, configPath, data, dataPath);
+  }
+
+  if (name === "vouchsetup") {
+    return setupVouchSystem(interaction, config, configPath);
   }
 
 }

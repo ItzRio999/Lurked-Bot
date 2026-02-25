@@ -48,7 +48,9 @@ const data = loadJson(DATA_PATH, {
   automod_strikes: {},
   giveaways: {},
   invite_tracking: { inviters: {}, joins: {} },
-  timed_roles: []
+  timed_roles: [],
+  vouches: [],
+  vouch_counter: 0
 });
 
 // Initialize Discord client with optimizations for Raspberry Pi
@@ -243,6 +245,11 @@ client.on("clientReady", async () => {
   const giveawaysAPI = require('./api/giveawaysAPI');
   app.use('/api', giveawaysAPI);
   console.log('✅ Giveaways API routes loaded');
+
+  // Load Vouches API routes
+  const vouchesAPI = require('./api/vouchesAPI');
+  app.use('/api', vouchesAPI);
+  console.log('✅ Vouches API routes loaded');
 
   // Log all registered routes for debugging
   console.log('\n📍 Registered API routes:');

@@ -915,58 +915,6 @@ const commands = [
       opt.setName("proof").setDescription("Optional proof image/video (PNG, JPG, JPEG, WEBP, GIF, MP4)")
     ),
 
-  new SlashCommandBuilder()
-    .setName("vouchsetup")
-    .setDescription("Configure the vouch system")
-    .addSubcommand(sub =>
-      sub
-        .setName("channel")
-        .setDescription("Set the channel where approved vouches are posted")
-        .addChannelOption(opt =>
-          opt
-            .setName("channel")
-            .setDescription("Vouch output channel")
-            .addChannelTypes(ChannelType.GuildText)
-            .setRequired(true)
-        )
-    )
-    .addSubcommand(sub =>
-      sub
-        .setName("cmdchannel")
-        .setDescription("Restrict /vouch usage to a specific channel")
-        .addChannelOption(opt =>
-          opt
-            .setName("channel")
-            .setDescription("Channel where users can run /vouch")
-            .addChannelTypes(ChannelType.GuildText)
-            .setRequired(true)
-        )
-    )
-    .addSubcommand(sub =>
-      sub
-        .setName("removecmdchannel")
-        .setDescription("Remove the command channel restriction (allow /vouch anywhere)")
-    )
-    .addSubcommand(sub =>
-      sub
-        .setName("footer")
-        .setDescription("Customize the footer text on vouch embeds")
-        .addStringOption(opt =>
-          opt.setName("text").setDescription("Footer text (e.g. '© YourServer, All Rights Reserved.')").setRequired(true)
-        )
-    )
-    .addSubcommand(sub =>
-      sub
-        .setName("disable")
-        .setDescription("Disable the vouch system")
-    )
-    .addSubcommand(sub =>
-      sub
-        .setName("status")
-        .setDescription("View current vouch system configuration")
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-
 ].map((c) => c.toJSON());
 
 module.exports = commands;

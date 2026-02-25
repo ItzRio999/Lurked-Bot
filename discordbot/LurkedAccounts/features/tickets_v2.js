@@ -16,14 +16,14 @@ const DEFAULT_PANEL = {
   title: "Support Tickets",
   description:
     "**__Ticket Rules:__**\n" +
-    "**1.** By opening a ticket, you agree to follow all server rules.\n" +
-    "**2.** Please avoid unnecessary messages — describe your issue clearly.\n" +
-    "**3.** Be clear and efficient. This helps us assist you faster.\n\n" +
+    "**1.** By opening a ticket, you automatically agree to our __Terms of Service__.\n" +
+    "**2.** When starting a ticket, please avoid unnecessary messages — see __[nohello.net](https://nohello.net)__ for proper etiquette.\n" +
+    "**3.** Be __clear__ and __concise__ when describing your issue. This helps us assist you ***faster***.\n\n" +
     "**__Support Hours:__**\n" +
     "**Standard Hours:** 11:00 AM – 8:00 PM EST\n" +
     "*We strive to be available outside these hours, but replies may take longer.*\n\n" +
     "─────────────────────────────────────\n" +
-    "Select a category from the dropdown below to open a ticket.",
+    "**Select a category** from the dropdown below to open a ticket.",
   color: 0x522081,
   footer: "© Lurked. All Rights Reserved.",
   thumbnail: null,

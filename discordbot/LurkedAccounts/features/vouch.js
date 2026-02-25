@@ -84,7 +84,7 @@ async function submitVouch(interaction, config, configPath, data, dataPath) {
 
   // Build vouch embed
   const footer = config.vouch.footer || `${interaction.guild.name}, All Rights Reserved.`;
-  const embedColor = config.vouch.embed_color || getColorByStars(stars);
+  const embedColor = config.vouch.embed_color || 0x522081;
 
   const vouchEmbed = new EmbedBuilder()
     .setTitle("New vouch created!")

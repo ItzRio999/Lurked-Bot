@@ -25,7 +25,7 @@ const { showSecurityDashboard, showRecentLogs } = require("../features/securityL
 const { showEmbedModal, handleEmbedSubmit, showAdvancedEmbedModal, handleAdvancedEmbedSubmit } = require("../features/embedCreator");
 const { showInviteStats, showInviteLeaderboard } = require("../features/inviteTracking");
 const { assignTimedRole, removeTimedRole, listTimedRoles } = require("../features/timedRoles");
-const { submitVouch } = require("../features/vouch");
+const { submitVouch, backupVouches, restoreVouches } = require("../features/vouch");
 const { hasStaffRole } = require("../utils/permissions");
 
 async function handleInteraction(interaction, config, data, configPath, dataPath, io) {
@@ -1622,6 +1622,14 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
   // ============== VOUCH SYSTEM ==============
   if (name === "vouch") {
     return submitVouch(interaction, config, configPath, data, dataPath);
+  }
+
+  if (name === "vouchbackup") {
+    return backupVouches(interaction, data, dataPath);
+  }
+
+  if (name === "vouchrestore") {
+    return restoreVouches(interaction, data, dataPath);
   }
 
 }

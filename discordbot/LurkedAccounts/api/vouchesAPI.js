@@ -3,6 +3,135 @@ const router = express.Router();
 const { loadJson, saveJson, DATA_PATH, CONFIG_PATH } = require('../utils/fileManager');
 const { verifyAuth, verifyAdmin } = require('../middleware/firebaseAuth');
 
+// firebase-admin is initialized by firebaseAuth.js when it is first required.
+// require('firebase-admin') returns the same singleton instance.
+function getFirestore() {
+  const admin = require('firebase-admin');
+  if (!admin.apps.length) throw new Error('Firebase Admin not initialized');
+  return admin.firestore();
+}
+
+const BACKUP_COLLECTION = 'vouches_backup';
+const BACKUP_DOC = 'latest';
+
+/**
+ * GET /api/vouches/public
+ * Returns sanitised vouches for the public Feedback page. No auth required.
+ */
+router.get('/vouches/public', async (req, res) => {
+  try {
+    const client = req.app.locals.client;
+    const data = loadJson(DATA_PATH, {});
+    const vouches = Array.isArray(data.vouches) ? data.vouches : [];
+
+    const enriched = await Promise.all(
+      vouches.map(async (v) => {
+        let userInfo = { username: v.user_tag || 'Unknown', displayName: null, avatar: null };
+        try {
+          const user = await client.users.fetch(v.user_id);
+          userInfo = {
+            username: user.username,
+            displayName: user.globalName || user.username,
+            avatar: user.displayAvatarURL({ size: 64, extension: 'png' }),
+          };
+        } catch {
+          // user unavailable, use stored tag
+        }
+        return {
+          id: v.id,
+          user: userInfo,
+          message: v.message,
+          stars: v.stars,
+          proof_url: v.proof_url || null,
+          proof_type: v.proof_type || null,
+          timestamp: v.timestamp,
+        };
+      })
+    );
+
+    res.json({ success: true, vouches: enriched.reverse(), total: enriched.length });
+  } catch (error) {
+    console.error('❌ Error fetching public vouches:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch vouches' });
+  }
+});
+
+/**
+ * GET /api/vouches/backup/status
+ * Returns metadata of the latest Firebase backup. Admin only.
+ */
+router.get('/vouches/backup/status', verifyAuth, verifyAdmin, async (req, res) => {
+  try {
+    const db = getFirestore();
+    const doc = await db.collection(BACKUP_COLLECTION).doc(BACKUP_DOC).get();
+    if (!doc.exists) {
+      return res.json({ success: true, backed_up_at: null, total: 0 });
+    }
+    const { backed_up_at, total } = doc.data();
+    res.json({ success: true, backed_up_at, total });
+  } catch (error) {
+    console.error('❌ Error fetching backup status:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch backup status' });
+  }
+});
+
+/**
+ * POST /api/vouches/backup
+ * Backs up all vouches to Firebase Firestore. Admin only.
+ */
+router.post('/vouches/backup', verifyAuth, verifyAdmin, async (req, res) => {
+  try {
+    const db = getFirestore();
+    const data = loadJson(DATA_PATH, {});
+    const vouches = Array.isArray(data.vouches) ? data.vouches : [];
+    const counter = data.vouch_counter || 0;
+    const backed_up_at = new Date().toISOString();
+
+    await db.collection(BACKUP_COLLECTION).doc(BACKUP_DOC).set({
+      vouches,
+      vouch_counter: counter,
+      backed_up_at,
+      total: vouches.length,
+    });
+
+    res.json({ success: true, message: `Backed up ${vouches.length} vouches`, backed_up_at, total: vouches.length });
+  } catch (error) {
+    console.error('❌ Error backing up vouches:', error);
+    res.status(500).json({ success: false, error: 'Backup failed: ' + error.message });
+  }
+});
+
+/**
+ * POST /api/vouches/restore
+ * Restores vouches from the latest Firebase backup. Admin only.
+ */
+router.post('/vouches/restore', verifyAuth, verifyAdmin, async (req, res) => {
+  try {
+    const db = getFirestore();
+    const snapshot = await db.collection(BACKUP_COLLECTION).doc(BACKUP_DOC).get();
+
+    if (!snapshot.exists) {
+      return res.status(404).json({ success: false, error: 'No backup found in Firebase' });
+    }
+
+    const backup = snapshot.data();
+    const data = loadJson(DATA_PATH, {});
+    data.vouches = backup.vouches || [];
+    data.vouch_counter = backup.vouch_counter ?? data.vouches.length;
+    saveJson(DATA_PATH, data);
+
+    res.json({
+      success: true,
+      message: `Restored ${data.vouches.length} vouches`,
+      total: data.vouches.length,
+      backed_up_at: backup.backed_up_at,
+    });
+  } catch (error) {
+    console.error('❌ Error restoring vouches:', error);
+    res.status(500).json({ success: false, error: 'Restore failed: ' + error.message });
+  }
+});
+
 /**
  * GET /api/vouches
  * Returns all vouches with resolved user info. Admin only.

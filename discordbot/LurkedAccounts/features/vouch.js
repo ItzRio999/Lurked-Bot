@@ -230,4 +230,78 @@ async function setupVouchSystem(interaction, config, configPath) {
   }
 }
 
-module.exports = { submitVouch, setupVouchSystem };
+const BACKUP_COLLECTION = 'vouches_backup';
+const BACKUP_DOC = 'latest';
+
+function getFirestore() {
+  const admin = require('firebase-admin');
+  if (!admin.apps.length) throw new Error('Firebase Admin not initialized');
+  return admin.firestore();
+}
+
+async function backupVouches(interaction, data, dataPath) {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  try {
+    const db = getFirestore();
+    const vouches = Array.isArray(data.vouches) ? data.vouches : [];
+    const backed_up_at = new Date().toISOString();
+
+    await db.collection(BACKUP_COLLECTION).doc(BACKUP_DOC).set({
+      vouches,
+      vouch_counter: data.vouch_counter || vouches.length,
+      backed_up_at,
+      total: vouches.length,
+    });
+
+    const embed = new EmbedBuilder()
+      .setTitle('✅ Vouch Backup Complete')
+      .setDescription(`Successfully backed up **${vouches.length}** vouch${vouches.length !== 1 ? 'es' : ''} to Firebase Firestore.`)
+      .addFields({ name: 'Timestamp', value: `<t:${Math.floor(new Date(backed_up_at).getTime() / 1000)}:F>`, inline: true })
+      .setColor(0x57F287);
+
+    return interaction.editReply({ embeds: [embed] });
+  } catch (err) {
+    console.error('❌ vouchbackup error:', err);
+    const embed = new EmbedBuilder()
+      .setDescription(`❌ Backup failed: ${err.message}`)
+      .setColor(0xED4245);
+    return interaction.editReply({ embeds: [embed] });
+  }
+}
+
+async function restoreVouches(interaction, data, dataPath) {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  try {
+    const db = getFirestore();
+    const snapshot = await db.collection(BACKUP_COLLECTION).doc(BACKUP_DOC).get();
+
+    if (!snapshot.exists) {
+      const embed = new EmbedBuilder()
+        .setDescription('❌ No backup found in Firebase Firestore. Run `/vouchbackup` first.')
+        .setColor(0xED4245);
+      return interaction.editReply({ embeds: [embed] });
+    }
+
+    const backup = snapshot.data();
+    data.vouches = backup.vouches || [];
+    data.vouch_counter = backup.vouch_counter ?? data.vouches.length;
+    saveJson(dataPath, data);
+
+    const ts = Math.floor(new Date(backup.backed_up_at).getTime() / 1000);
+    const embed = new EmbedBuilder()
+      .setTitle('✅ Vouch Restore Complete')
+      .setDescription(`Restored **${data.vouches.length}** vouch${data.vouches.length !== 1 ? 'es' : ''} from backup.`)
+      .addFields({ name: 'Backup created', value: `<t:${ts}:F>`, inline: true })
+      .setColor(0x57F287);
+
+    return interaction.editReply({ embeds: [embed] });
+  } catch (err) {
+    console.error('❌ vouchrestore error:', err);
+    const embed = new EmbedBuilder()
+      .setDescription(`❌ Restore failed: ${err.message}`)
+      .setColor(0xED4245);
+    return interaction.editReply({ embeds: [embed] });
+  }
+}
+
+module.exports = { submitVouch, setupVouchSystem, backupVouches, restoreVouches };

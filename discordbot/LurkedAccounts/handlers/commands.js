@@ -915,6 +915,16 @@ const commands = [
       opt.setName("proof").setDescription("Optional proof image/video (PNG, JPG, JPEG, WEBP, GIF, MP4)")
     ),
 
+  new SlashCommandBuilder()
+    .setName("vouchbackup")
+    .setDescription("Backup all vouches to Firebase Firestore")
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+  new SlashCommandBuilder()
+    .setName("vouchrestore")
+    .setDescription("Restore vouches from the latest Firebase Firestore backup")
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
 ].map((c) => c.toJSON());
 
 module.exports = commands;

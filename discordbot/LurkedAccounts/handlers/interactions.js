@@ -102,6 +102,15 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
     return;
   }
 
+  // Handle select menu interactions
+  if (interaction.isStringSelectMenu()) {
+    if (interaction.customId === "ticket_category_select") {
+      const category = interaction.values[0];
+      return createTicketFromButton(interaction, category, config, data, dataPath);
+    }
+    return;
+  }
+
   if (!interaction.isChatInputCommand()) return;
   if (!interaction.inGuild()) {
     const embed = addLogo(

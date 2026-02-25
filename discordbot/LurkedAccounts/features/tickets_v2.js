@@ -3,6 +3,8 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
   PermissionFlagsBits,
   ChannelType,
   MessageFlags,
@@ -12,39 +14,48 @@ const { saveJson, addLogo } = require("../utils/fileManager");
 // Default ticket panel configuration
 const DEFAULT_PANEL = {
   title: "Support Tickets",
-  description: "Click a button below to open a support ticket. A private channel will be created for you.",
+  description:
+    "**__Ticket Rules:__**\n" +
+    "**1.** By opening a ticket, you agree to follow all server rules.\n" +
+    "**2.** Please avoid unnecessary messages — describe your issue clearly.\n" +
+    "**3.** Be clear and efficient. This helps us assist you faster.\n\n" +
+    "**__Support Hours:__**\n" +
+    "**Standard Hours:** 11:00 AM – 8:00 PM EST\n" +
+    "*We strive to be available outside these hours, but replies may take longer.*\n\n" +
+    "─────────────────────────────────────\n" +
+    "Select a category from the dropdown below to open a ticket.",
   color: 0x522081,
-  footer: "Click a button to create a ticket",
+  footer: "© Lurked. All Rights Reserved.",
   thumbnail: null,
   image: null,
   buttons: [
     {
       id: "general",
       label: "General Support",
-      emoji: "📋",
+      emoji: "🎫",
       style: "Primary",
-      description: "General questions and assistance"
+      description: "Open a ticket for general support."
     },
     {
       id: "bug",
       label: "Bug Report",
       emoji: "🐛",
       style: "Danger",
-      description: "Report bugs or issues"
+      description: "Report a bug or technical issue."
     },
     {
       id: "account",
-      label: "Account Suggestion",
-      emoji: "💡",
+      label: "Purchase Inquiry",
+      emoji: "🛒",
       style: "Success",
-      description: "Account suggestions"
+      description: "Open to make a purchase inquiry."
     },
     {
       id: "other",
       label: "Other",
       emoji: "📁",
       style: "Secondary",
-      description: "Anything else"
+      description: "Anything else not listed above."
     }
   ]
 };
@@ -66,28 +77,29 @@ async function createTicketPanel(interaction, config, configPath) {
     .setTitle(panel.title)
     .setDescription(panel.description)
     .setColor(panel.color)
-    .setFooter({ text: panel.footer })
-    .setTimestamp();
+    .setFooter({ text: panel.footer });
 
   if (panel.thumbnail) embed.setThumbnail(panel.thumbnail);
   if (panel.image) embed.setImage(panel.image);
   addLogo(embed, config);
 
-  // Create button rows (max 5 buttons per row)
-  const buttons = panel.buttons.map(btn =>
-    new ButtonBuilder()
-      .setCustomId(`ticket_${btn.id}`)
-      .setLabel(btn.label)
-      .setStyle(ButtonStyle[btn.style])
-      .setEmoji(btn.emoji)
-  );
+  // Create dropdown select menu
+  const selectMenu = new StringSelectMenuBuilder()
+    .setCustomId("ticket_category_select")
+    .setPlaceholder("Select a category...")
+    .addOptions(
+      panel.buttons.map(btn =>
+        new StringSelectMenuOptionBuilder()
+          .setLabel(btn.label)
+          .setValue(btn.id)
+          .setDescription(btn.description)
+          .setEmoji(btn.emoji)
+      )
+    );
 
-  const rows = [];
-  for (let i = 0; i < buttons.length; i += 5) {
-    rows.push(new ActionRowBuilder().addComponents(buttons.slice(i, i + 5)));
-  }
+  const row = new ActionRowBuilder().addComponents(selectMenu);
 
-  await interaction.channel.send({ embeds: [embed], components: rows });
+  await interaction.channel.send({ embeds: [embed], components: [row] });
 
   const successEmbed = new EmbedBuilder()
     .setDescription("✅ Ticket panel created successfully!")

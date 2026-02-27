@@ -24,10 +24,11 @@ async function submitVouch(interaction, config, configPath, data, dataPath) {
     return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 
-  // Enforce command channel restriction
-  if (config.vouch.cmd_channel_id && interaction.channel.id !== config.vouch.cmd_channel_id) {
+  // Enforce role requirement
+  const REQUIRED_ROLE_ID = "1451251793303703616";
+  if (!interaction.member.roles.cache.has(REQUIRED_ROLE_ID)) {
     const embed = new EmbedBuilder()
-      .setDescription(`❌ Vouches can only be submitted in <#${config.vouch.cmd_channel_id}>!`)
+      .setDescription(`❌ You need the <@&${REQUIRED_ROLE_ID}> role to submit a vouch.`)
       .setColor(0xED4245);
     return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }

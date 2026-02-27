@@ -193,19 +193,20 @@ router.get('/vouches', verifyAuth, verifyAdmin, async (req, res) => {
 router.delete('/vouches/:vouchId', verifyAuth, verifyAdmin, async (req, res) => {
   try {
     const vouchId = parseInt(req.params.vouchId, 10);
-    const data = loadJson(DATA_PATH, {});
+    const liveData = req.app.locals.data;
 
-    if (!Array.isArray(data.vouches)) {
+    if (!Array.isArray(liveData.vouches)) {
       return res.status(404).json({ success: false, error: 'No vouches found' });
     }
 
-    const index = data.vouches.findIndex((v) => v.id === vouchId);
+    const index = liveData.vouches.findIndex((v) => v.id === vouchId);
     if (index === -1) {
       return res.status(404).json({ success: false, error: 'Vouch not found' });
     }
 
-    data.vouches.splice(index, 1);
-    saveJson(DATA_PATH, data);
+    // Remove from in-memory data (prevents bot overwrites) and persist to disk
+    liveData.vouches.splice(index, 1);
+    saveJson(DATA_PATH, liveData);
 
     res.json({ success: true, message: `Vouch #${vouchId} deleted` });
   } catch (error) {

@@ -318,6 +318,11 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
     return interaction.reply({ embeds: [embed] });
   }
 
+  // ============== VOUCH (public — role-gated inside submitVouch) ==============
+  if (name === "vouch") {
+    return submitVouch(interaction, config, configPath, data, dataPath);
+  }
+
   // ============== OWNER/COOWNER COMMANDS ==============
   if (!isOwnerOrCoowner(member, config)) {
     const embed = addLogo(
@@ -1628,11 +1633,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
     return removeTimedRole(interaction, data, dataPath, config);
   }
 
-  // ============== VOUCH SYSTEM ==============
-  if (name === "vouch") {
-    return submitVouch(interaction, config, configPath, data, dataPath);
-  }
-
+  // ============== VOUCH SYSTEM (admin) ==============
   if (name === "vouchbackup") {
     return backupVouches(interaction, data, dataPath);
   }

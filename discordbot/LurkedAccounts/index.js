@@ -1,7 +1,7 @@
 // Load environment variables first
 require("dotenv").config();
 
-const { Client, GatewayIntentBits, Partials, REST, Routes, ActivityType } = require("discord.js");
+const { Client, GatewayIntentBits, Partials, REST, Routes, ActivityType, MessageFlags } = require("discord.js");
 const { loadJson, CONFIG_PATH, DATA_PATH } = require("./utils/fileManager");
 const { hasStaffRole } = require("./utils/permissions");
 const { handleInteraction } = require("./handlers/interactions");
@@ -582,7 +582,7 @@ client.on("interactionCreate", async (interaction) => {
     if (!interaction.replied && !interaction.deferred) {
       await interaction.reply({
         content: "❌ An error occurred while processing your command.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       }).catch(console.error);
     }
   }

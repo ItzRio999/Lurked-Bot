@@ -339,7 +339,7 @@ async function handleClose(interaction, config, data, dataPath) {
         .setEmoji("❌")
     );
 
-  await interaction.reply({ embeds: [confirmEmbed], components: [confirmRow], ephemeral: true });
+  await interaction.reply({ embeds: [confirmEmbed], components: [confirmRow], flags: MessageFlags.Ephemeral });
 }
 
 // Handle close confirmation

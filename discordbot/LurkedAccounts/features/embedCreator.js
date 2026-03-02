@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionFlagsBits } = require("discord.js");
+const { EmbedBuilder, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionFlagsBits, MessageFlags } = require("discord.js");
 
 /**
  * Show the embed creation modal
@@ -78,7 +78,7 @@ async function handleEmbedSubmit(interaction, config) {
   if (!channel) {
     return interaction.reply({
       content: "❌ Could not find the target channel!",
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
 
@@ -87,7 +87,7 @@ async function handleEmbedSubmit(interaction, config) {
   if (!channel.permissionsFor(botMember).has(PermissionFlagsBits.SendMessages)) {
     return interaction.reply({
       content: `❌ I don't have permission to send messages in ${channel}!`,
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
 
@@ -141,12 +141,12 @@ async function handleEmbedSubmit(interaction, config) {
       confirmEmbed.setThumbnail(config.logo_url);
     }
 
-    await interaction.reply({ embeds: [confirmEmbed], ephemeral: true });
+    await interaction.reply({ embeds: [confirmEmbed], flags: MessageFlags.Ephemeral });
   } catch (error) {
     console.error("Error sending embed:", error);
     return interaction.reply({
       content: `❌ Failed to send embed: ${error.message}`,
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
 }
@@ -227,7 +227,7 @@ async function handleAdvancedEmbedSubmit(interaction, config) {
   if (!channel) {
     return interaction.reply({
       content: "❌ Could not find the target channel!",
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
 
@@ -235,7 +235,7 @@ async function handleAdvancedEmbedSubmit(interaction, config) {
   if (!channel.permissionsFor(botMember).has(PermissionFlagsBits.SendMessages)) {
     return interaction.reply({
       content: `❌ I don't have permission to send messages in ${channel}!`,
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
 
@@ -328,12 +328,12 @@ async function handleAdvancedEmbedSubmit(interaction, config) {
       confirmEmbed.setThumbnail(config.logo_url);
     }
 
-    await interaction.reply({ embeds: [confirmEmbed], ephemeral: true });
+    await interaction.reply({ embeds: [confirmEmbed], flags: MessageFlags.Ephemeral });
   } catch (error) {
     console.error("Error sending embed:", error);
     return interaction.reply({
       content: `❌ Failed to send embed: ${error.message}`,
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
 }

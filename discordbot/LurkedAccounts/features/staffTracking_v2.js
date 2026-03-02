@@ -1,4 +1,4 @@
-const { EmbedBuilder, AttachmentBuilder } = require("discord.js");
+const { EmbedBuilder, AttachmentBuilder, MessageFlags } = require("discord.js");
 const { saveJson, addLogo } = require("../utils/fileManager");
 const { hasStaffRole } = require("../utils/permissions");
 
@@ -251,7 +251,7 @@ async function showStaffStats(interaction, data, config) {
         .setColor(0xED4245),
       config
     );
-    return interaction.reply({ embeds: [embed], ephemeral: true });
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 
   let messageCount = 0;

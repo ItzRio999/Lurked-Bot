@@ -6,6 +6,7 @@ const {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
+  MessageFlags,
   PermissionFlagsBits,
   ChannelType,
 } = require("discord.js");
@@ -195,10 +196,10 @@ async function handleSecurityTrapMessage(message, config) {
   return true;
 }
 
-function buildDecisionReasonModal(action, userId, caseId) {
+function buildDecisionReasonModal(action, userId, caseId, reviewMessageId) {
   const actionLabel = action === "ban" ? "Ban" : "No Ban";
   const modal = new ModalBuilder()
-    .setCustomId(`securitytrap_submit_${action}_${userId}_${caseId}`)
+    .setCustomId(`securitytrap_submit_${action}_${userId}_${caseId}_${reviewMessageId}`)
     .setTitle(`Security Trap ${actionLabel} Reason`);
 
   const reasonInput = new TextInputBuilder()
@@ -222,16 +223,16 @@ async function handleDecisionButton(interaction) {
   const caseId = parts[3];
 
   if (!action || !userId || !caseId) {
-    await interaction.reply({ content: "Invalid security action data.", ephemeral: true });
+    await interaction.reply({ content: "Invalid security action data.", flags: MessageFlags.Ephemeral });
     return true;
   }
 
   if (action !== "ban" && action !== "keep") {
-    await interaction.reply({ content: "Unsupported security action.", ephemeral: true });
+    await interaction.reply({ content: "Unsupported security action.", flags: MessageFlags.Ephemeral });
     return true;
   }
 
-  const modal = buildDecisionReasonModal(action, userId, caseId);
+  const modal = buildDecisionReasonModal(action, userId, caseId, interaction.message.id);
   await interaction.showModal(modal);
   return true;
 }
@@ -241,23 +242,24 @@ async function handleDecisionModal(interaction) {
   const action = parts[2];
   const userId = parts[3];
   const caseId = parts[4];
+  const reviewMessageId = parts[5];
 
-  if (!action || !userId || !caseId) {
-    await interaction.reply({ content: "Invalid security decision submission.", ephemeral: true });
+  if (!action || !userId || !caseId || !reviewMessageId) {
+    await interaction.reply({ content: "Invalid security decision submission.", flags: MessageFlags.Ephemeral });
     return true;
   }
 
   if (action !== "ban" && action !== "keep") {
-    await interaction.reply({ content: "Unsupported security action.", ephemeral: true });
+    await interaction.reply({ content: "Unsupported security action.", flags: MessageFlags.Ephemeral });
     return true;
   }
 
   const reason = interaction.fields.getTextInputValue("reason").trim();
-  const decisionMessage = interaction.channel?.messages?.cache?.get(caseId)
-    || await interaction.channel?.messages?.fetch(caseId).catch(() => null);
+  const decisionMessage = interaction.channel?.messages?.cache?.get(reviewMessageId)
+    || await interaction.channel?.messages?.fetch(reviewMessageId).catch(() => null);
 
   if (!decisionMessage) {
-    await interaction.reply({ content: "Could not find the review message for this decision.", ephemeral: true });
+    await interaction.reply({ content: "Could not find the review message for this decision.", flags: MessageFlags.Ephemeral });
     return true;
   }
 
@@ -341,7 +343,7 @@ async function handleDecisionModal(interaction) {
 
   await interaction.reply({
     content: `Security trap decision recorded: ${action === "ban" ? "ban" : "no ban"}.`,
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 
   return true;
@@ -352,7 +354,7 @@ async function handleSecurityTrapDecision(interaction) {
   if (!interaction.customId.startsWith("securitytrap_")) return false;
 
   if (!interaction.memberPermissions?.has(PermissionFlagsBits.BanMembers)) {
-    await interaction.reply({ content: "You need `Ban Members` permission to use this action.", ephemeral: true });
+    await interaction.reply({ content: "You need `Ban Members` permission to use this action.", flags: MessageFlags.Ephemeral });
     return true;
   }
 

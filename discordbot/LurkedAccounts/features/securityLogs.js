@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require("discord.js");
 const { saveJson, addLogo } = require("../utils/fileManager");
 
 // ============== SECURITY EVENT TYPES ==============
@@ -403,7 +403,7 @@ async function showSecurityDashboard(interaction, data, config) {
       .setEmoji("🚨")
   );
 
-  return interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+  return interaction.reply({ embeds: [embed], components: [row], flags: MessageFlags.Ephemeral });
 }
 
 async function showRecentLogs(interaction, data, config, alertsOnly = false) {
@@ -425,7 +425,7 @@ async function showRecentLogs(interaction, data, config, alertsOnly = false) {
         .setColor(0x57f287),
       config
     );
-    return interaction.reply({ embeds: [embed], ephemeral: true });
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 
   const formatLog = (log) => {

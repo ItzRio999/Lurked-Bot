@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require("discord.js");
+const { EmbedBuilder, MessageFlags } = require("discord.js");
 const { saveJson } = require("../utils/fileManager");
 const { mention } = require("../utils/permissions");
 
@@ -101,7 +101,7 @@ async function showInviteStats(interaction, data, config) {
     const embed = new EmbedBuilder()
       .setDescription(`No invite data found for ${mention(userId)}.`)
       .setColor(0xED4245);
-    return interaction.reply({ embeds: [embed], ephemeral: true });
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 
   const embed = new EmbedBuilder()
@@ -173,7 +173,7 @@ async function showInviteLeaderboard(interaction, data, config) {
     const embed = new EmbedBuilder()
       .setDescription("No invite data recorded yet.")
       .setColor(0xED4245);
-    return interaction.reply({ embeds: [embed], ephemeral: true });
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 
   const medals = ["🥇", "🥈", "🥉"];

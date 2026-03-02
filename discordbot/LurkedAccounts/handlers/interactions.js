@@ -1157,7 +1157,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
           .setFooter({ text: "All logs require a log channel to be set with /setlogchannel" }),
         config
       );
-      return interaction.reply({ embeds: [embed], ephemeral: true });
+      return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     }
 
     if (subcommand === "config") {
@@ -1184,7 +1184,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
             .setFooter({ text: "Use /logs config type:<type> enabled:<true/false> to change" }),
           config
         );
-        return interaction.reply({ embeds: [embed], ephemeral: true });
+        return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
       }
 
       if (!type || enabled === null) {
@@ -1194,7 +1194,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
             .setColor(0xED4245),
           config
         );
-        return interaction.reply({ embeds: [embed], ephemeral: true });
+        return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
       }
 
       config.logging[type] = enabled;
@@ -1530,7 +1530,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
             .setColor(0x522081),
           config
         );
-        return interaction.reply({ embeds: [embed], ephemeral: true });
+        return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
       }
 
       const logs = data.security_logs || [];
@@ -1577,7 +1577,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
         config
       );
 
-      return interaction.reply({ embeds: [embed], ephemeral: true });
+      return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     }
 
     if (subcommand === "setchannel") {

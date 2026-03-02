@@ -26,6 +26,7 @@ const { showEmbedModal, handleEmbedSubmit, showAdvancedEmbedModal, handleAdvance
 const { showInviteStats, showInviteLeaderboard } = require("../features/inviteTracking");
 const { assignTimedRole, removeTimedRole, listTimedRoles } = require("../features/timedRoles");
 const { submitVouch, backupVouches, restoreVouches } = require("../features/vouch");
+const { handleSecurityTrapDecision } = require("../features/securityTrap");
 const { hasStaffRole } = require("../utils/permissions");
 
 async function handleInteraction(interaction, config, data, configPath, dataPath, io) {
@@ -45,6 +46,10 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
 
   // Handle button interactions
   if (interaction.isButton()) {
+    if (interaction.customId.startsWith("securitytrap_")) {
+      return handleSecurityTrapDecision(interaction);
+    }
+
     // Ticket panel buttons
     if (interaction.customId.startsWith("ticket_")) {
       if (interaction.customId === "ticket_claim") {

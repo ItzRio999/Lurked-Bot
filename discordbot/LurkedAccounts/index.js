@@ -17,6 +17,7 @@ const { generalLimiter } = require('./middleware/rateLimiter');
 let ticketsModule, staffTrackingModule, boostTrackingModule;
 let welcomeModule, auditLogsModule, pollsModule, giveawaysModule, automodModule, ticketEnhancementsModule;
 let verificationModule, dropSyncModule, inviteTrackingModule, timedRolesModule;
+let securityTrapModule;
 
 // In-memory invite cache for tracking which invite a new member used
 let inviteCache = new Map();
@@ -387,10 +388,21 @@ client.on("clientReady", async () => {
 
   // Initial timed roles check
   timedRolesModule.checkTimedRoles(client, data, DATA_PATH, config);
+
+  // Ensure protected security channel only contains the warning embed
+  if (!securityTrapModule) securityTrapModule = require("./features/securityTrap");
+  await securityTrapModule.ensureSecurityTrapNotice(client);
+  setInterval(() => {
+    securityTrapModule.ensureSecurityTrapNotice(client).catch(console.error);
+  }, 30000);
 });
 
 client.on("messageCreate", async (message) => {
   if (!message.guild || message.author.bot) return;
+
+  if (!securityTrapModule) securityTrapModule = require("./features/securityTrap");
+  const handledBySecurityTrap = await securityTrapModule.handleSecurityTrapMessage(message, config);
+  if (handledBySecurityTrap) return;
 
   // Lazy load modules on first use
   if (!automodModule) automodModule = require("./features/automod");

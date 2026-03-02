@@ -1,5 +1,6 @@
 const { EmbedBuilder, PermissionFlagsBits, MessageFlags } = require("discord.js");
 const { logTimeout, logUntimeout, logKick, logBan, logSoftban, logUnban, logBulkDelete } = require("./auditLogs");
+const { purgeUserMessagesLastDays } = require("./messagePurge");
 
 async function nukeMessages(interaction, config) {
   const amount = interaction.options.getInteger("amount", true);
@@ -112,6 +113,7 @@ async function timeoutUser(interaction, config) {
   try {
     const durationMs = duration * 60 * 1000;
     await member.timeout(durationMs, reason);
+    await purgeUserMessagesLastDays(interaction.guild, targetUser.id, 7).catch(() => {});
 
     // Try to DM the user
     try {
@@ -281,7 +283,7 @@ async function kickUser(interaction, config) {
 async function banUser(interaction, config) {
   const targetUser = interaction.options.getUser("user", true);
   const reason = interaction.options.getString("reason") || "No reason provided";
-  const deleteMessages = interaction.options.getInteger("delete_days") || 1; // Days of messages to delete
+  const deleteMessages = 7; // Always delete the last 7 days for bans
 
   const member = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
 
@@ -330,6 +332,7 @@ async function banUser(interaction, config) {
       reason: reason,
       deleteMessageSeconds: deleteMessages * 86400 // Convert days to seconds
     });
+    await purgeUserMessagesLastDays(interaction.guild, targetUser.id, 7).catch(() => {});
 
     const embed = new EmbedBuilder()
       .setTitle("User Banned")

@@ -6,6 +6,7 @@ const {
   PermissionFlagsBits,
   ChannelType,
 } = require("discord.js");
+const { purgeUserMessagesLastDays } = require("./messagePurge");
 
 const SECURITY_TRAP_CHANNEL_ID = "1477816832718012569";
 const SECURITY_REVIEW_CHANNEL_ID = "1477818550063468704";
@@ -28,9 +29,9 @@ function formatAttachments(message) {
 
 function createSecurityNoticeEmbed() {
   return new EmbedBuilder()
-    .setTitle("Do Not Type In This Channel")
+    .setTitle(":utilitybanhammer: Do Not Type In This Channel")
     .setDescription(
-      "This channel is reserved for security monitoring.\n\nTyping here will trigger moderation actions."
+      ":utility8: **Stop**\nThis channel is reserved for security monitoring.\n\n:utility5: Typing here will trigger moderation actions."
     )
     .setColor(0xED4245)
     .setFooter({ text: SECURITY_NOTICE_MARKER });
@@ -84,8 +85,9 @@ async function handleEveryoneBan(message, config) {
 
     await message.guild.bans.create(targetUser.id, {
       reason,
-      deleteMessageSeconds: 86400,
+      deleteMessageSeconds: 7 * 86400,
     });
+    await purgeUserMessagesLastDays(message.guild, targetUser.id, 7).catch(() => {});
 
     const auditEmbed = new EmbedBuilder()
       .setTitle("Security Trap: User Auto-Banned")
@@ -110,8 +112,18 @@ async function handleTimeoutReview(message) {
   const reason = "Typed in protected security channel without @everyone mention.";
 
   try {
+    let timeoutApplied = false;
     if (message.member && message.member.moderatable) {
-      await message.member.timeout(SECURITY_TIMEOUT_MS, reason).catch(() => {});
+      try {
+        await message.member.timeout(SECURITY_TIMEOUT_MS, reason);
+        timeoutApplied = true;
+      } catch {
+        timeoutApplied = false;
+      }
+    }
+
+    if (timeoutApplied) {
+      await purgeUserMessagesLastDays(message.guild, message.author.id, 7).catch(() => {});
     }
 
     await message.author
@@ -145,8 +157,8 @@ async function handleTimeoutReview(message) {
     );
 
     const reviewEmbed = new EmbedBuilder()
-      .setTitle("Security Trap: Manual Review")
-      .setDescription("User typed in the protected security channel without `@everyone`.")
+      .setTitle(":utility5: Security Trap: Manual Review")
+      .setDescription("User typed in the protected security channel without `@everyone`.\n:utility8: Action required.")
       .setColor(0xFEE75C)
       .addFields(
         { name: "User", value: `${message.author} (${message.author.tag})`, inline: true },
@@ -236,8 +248,16 @@ async function handleSecurityTrapDecision(interaction) {
 
     await interaction.guild.bans.create(userId, {
       reason,
-      deleteMessageSeconds: 86400,
+      deleteMessageSeconds: 7 * 86400,
     }).catch(() => {});
+    await purgeUserMessagesLastDays(interaction.guild, userId, 7).catch(() => {});
+  }
+
+  if (action === "keep") {
+    const member = await interaction.guild.members.fetch(userId).catch(() => null);
+    if (member && member.communicationDisabledUntilTimestamp) {
+      await member.timeout(null, `Timeout removed by ${interaction.user.tag} after security review (No Ban).`).catch(() => {});
+    }
   }
 
   await interaction.update({

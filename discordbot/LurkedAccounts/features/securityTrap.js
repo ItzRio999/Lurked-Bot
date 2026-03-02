@@ -29,9 +29,9 @@ function formatAttachments(message) {
 
 function createSecurityNoticeEmbed() {
   return new EmbedBuilder()
-    .setTitle(":utilitybanhammer: Do Not Type In This Channel")
+    .setTitle("Do Not Type In This Channel")
     .setDescription(
-      ":utility8: **Stop**\nThis channel is reserved for security monitoring.\n\n:utility5: Typing here will trigger moderation actions."
+      "This channel is reserved for security monitoring.\n\nTyping here will trigger moderation actions."
     )
     .setColor(0xED4245)
     .setFooter({ text: SECURITY_NOTICE_MARKER });
@@ -157,8 +157,8 @@ async function handleTimeoutReview(message) {
     );
 
     const reviewEmbed = new EmbedBuilder()
-      .setTitle(":utility5: Security Trap: Manual Review")
-      .setDescription("User typed in the protected security channel without `@everyone`.\n:utility8: Action required.")
+      .setTitle("Security Trap: Manual Review")
+      .setDescription("User typed in the protected security channel without `@everyone`.")
       .setColor(0xFEE75C)
       .addFields(
         { name: "User", value: `${message.author} (${message.author.tag})`, inline: true },

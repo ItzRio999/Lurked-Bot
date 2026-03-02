@@ -3,6 +3,9 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
   PermissionFlagsBits,
   ChannelType,
 } = require("discord.js");
@@ -192,46 +195,96 @@ async function handleSecurityTrapMessage(message, config) {
   return true;
 }
 
-function disableDecisionButtons(interaction) {
-  const rows = interaction.message.components.map((row) =>
-    ActionRowBuilder.from(row).setComponents(
-      ...row.components.map((component) => ButtonBuilder.from(component).setDisabled(true))
-    )
-  );
-  return rows;
+function buildDecisionReasonModal(action, userId, caseId) {
+  const actionLabel = action === "ban" ? "Ban" : "No Ban";
+  const modal = new ModalBuilder()
+    .setCustomId(`securitytrap_submit_${action}_${userId}_${caseId}`)
+    .setTitle(`Security Trap ${actionLabel} Reason`);
+
+  const reasonInput = new TextInputBuilder()
+    .setCustomId("reason")
+    .setLabel("Reason")
+    .setStyle(TextInputStyle.Paragraph)
+    .setMinLength(3)
+    .setMaxLength(500)
+    .setPlaceholder("Enter the reason shown in DMs and moderation logs.")
+    .setRequired(true);
+
+  const row = new ActionRowBuilder().addComponents(reasonInput);
+  modal.addComponents(row);
+  return modal;
 }
 
-async function handleSecurityTrapDecision(interaction) {
-  if (!interaction.isButton()) return false;
-  if (!interaction.customId.startsWith("securitytrap_")) return false;
-
-  if (!interaction.memberPermissions?.has(PermissionFlagsBits.BanMembers)) {
-    await interaction.reply({ content: "You need `Ban Members` permission to use this button.", ephemeral: true });
-    return true;
-  }
-
+async function handleDecisionButton(interaction) {
   const parts = interaction.customId.split("_");
   const action = parts[1];
   const userId = parts[2];
+  const caseId = parts[3];
 
-  if (!action || !userId) {
+  if (!action || !userId || !caseId) {
     await interaction.reply({ content: "Invalid security action data.", ephemeral: true });
     return true;
   }
 
-  const disabledRows = disableDecisionButtons(interaction);
-  const embed = EmbedBuilder.from(interaction.message.embeds[0]);
-  embed.addFields({
-    name: "Moderator Decision",
-    value: action === "ban" ? `Banned by ${interaction.user}` : `No ban by ${interaction.user}`,
-    inline: false,
-  });
+  if (action !== "ban" && action !== "keep") {
+    await interaction.reply({ content: "Unsupported security action.", ephemeral: true });
+    return true;
+  }
+
+  const modal = buildDecisionReasonModal(action, userId, caseId);
+  await interaction.showModal(modal);
+  return true;
+}
+
+async function handleDecisionModal(interaction) {
+  const parts = interaction.customId.split("_");
+  const action = parts[2];
+  const userId = parts[3];
+  const caseId = parts[4];
+
+  if (!action || !userId || !caseId) {
+    await interaction.reply({ content: "Invalid security decision submission.", ephemeral: true });
+    return true;
+  }
+
+  if (action !== "ban" && action !== "keep") {
+    await interaction.reply({ content: "Unsupported security action.", ephemeral: true });
+    return true;
+  }
+
+  const reason = interaction.fields.getTextInputValue("reason").trim();
+  const decisionMessage = interaction.channel?.messages?.cache?.get(caseId)
+    || await interaction.channel?.messages?.fetch(caseId).catch(() => null);
+
+  if (!decisionMessage) {
+    await interaction.reply({ content: "Could not find the review message for this decision.", ephemeral: true });
+    return true;
+  }
+
+  const disabledRows = decisionMessage.components.map((row) =>
+    ActionRowBuilder.from(row).setComponents(
+      ...row.components.map((component) => ButtonBuilder.from(component).setDisabled(true))
+    )
+  );
+
+  const embed = EmbedBuilder.from(decisionMessage.embeds[0]);
+  embed.addFields(
+    {
+      name: "Moderator Decision",
+      value: action === "ban" ? `Banned by ${interaction.user}` : `No ban by ${interaction.user}`,
+      inline: false,
+    },
+    {
+      name: "Reason",
+      value: truncate(reason, 1024),
+      inline: false,
+    }
+  );
   embed.setColor(action === "ban" ? 0xED4245 : 0x57F287).setTimestamp();
 
-  if (action === "ban") {
-    const reason = "Manual ban from security trap review after protected channel trigger.";
-    const user = await interaction.client.users.fetch(userId).catch(() => null);
+  const user = await interaction.client.users.fetch(userId).catch(() => null);
 
+  if (action === "ban") {
     if (user) {
       await user
         .send({
@@ -239,7 +292,7 @@ async function handleSecurityTrapDecision(interaction) {
             new EmbedBuilder()
               .setTitle("You Were Banned")
               .setDescription(`You were banned from **${interaction.guild.name}**.`)
-              .addFields({ name: "Reason", value: reason })
+              .addFields({ name: "Reason", value: truncate(reason, 1024) })
               .setColor(0xED4245),
           ],
         })
@@ -247,7 +300,7 @@ async function handleSecurityTrapDecision(interaction) {
     }
 
     await interaction.guild.bans.create(userId, {
-      reason,
+      reason: `Security trap review ban by ${interaction.user.tag}: ${reason}`,
       deleteMessageSeconds: 7 * 86400,
     }).catch(() => {});
     await purgeUserMessagesLastDays(interaction.guild, userId, 7).catch(() => {});
@@ -255,17 +308,56 @@ async function handleSecurityTrapDecision(interaction) {
 
   if (action === "keep") {
     const member = await interaction.guild.members.fetch(userId).catch(() => null);
+    let timeoutRemoved = false;
+
     if (member && member.communicationDisabledUntilTimestamp) {
-      await member.timeout(null, `Timeout removed by ${interaction.user.tag} after security review (No Ban).`).catch(() => {});
+      await member.timeout(null, `Timeout removed by ${interaction.user.tag}: ${reason}`).catch(() => {});
+      timeoutRemoved = true;
+    }
+
+    if (user) {
+      await user
+        .send({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle(timeoutRemoved ? "Your Timeout Was Removed" : "Security Trap Review Complete")
+              .setDescription(
+                timeoutRemoved
+                  ? `Your timeout in **${interaction.guild.name}** has been removed after review.`
+                  : `Your case in **${interaction.guild.name}** was reviewed and no ban was applied.`
+              )
+              .addFields({ name: "Reason", value: truncate(reason, 1024) })
+              .setColor(0x57F287),
+          ],
+        })
+        .catch(() => {});
     }
   }
 
-  await interaction.update({
+  await decisionMessage.edit({
     embeds: [embed],
     components: disabledRows,
+  }).catch(() => {});
+
+  await interaction.reply({
+    content: `Security trap decision recorded: ${action === "ban" ? "ban" : "no ban"}.`,
+    ephemeral: true,
   });
 
   return true;
+}
+
+async function handleSecurityTrapDecision(interaction) {
+  if (!interaction.isButton() && !interaction.isModalSubmit()) return false;
+  if (!interaction.customId.startsWith("securitytrap_")) return false;
+
+  if (!interaction.memberPermissions?.has(PermissionFlagsBits.BanMembers)) {
+    await interaction.reply({ content: "You need `Ban Members` permission to use this action.", ephemeral: true });
+    return true;
+  }
+
+  if (interaction.isButton()) return handleDecisionButton(interaction);
+  return handleDecisionModal(interaction);
 }
 
 async function ensureSecurityTrapNotice(client) {

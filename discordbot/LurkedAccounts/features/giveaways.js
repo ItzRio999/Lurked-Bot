@@ -225,7 +225,7 @@ async function rerollGiveaway(interaction, data, dataPath) {
 }
 
 // Finalize giveaway and pick winners
-async function finalizeGiveaway(message, giveaway, data, dataPath, client) {
+async function finalizeGiveaway(message, giveaway, data, dataPath, client, fallbackChannel = null) {
   giveaway.ended = true;
 
   const entries = giveaway.entries || [];
@@ -275,25 +275,28 @@ async function finalizeGiveaway(message, giveaway, data, dataPath, client) {
   }
 
   // Announce winners
-  if (winners.length > 0) {
-    const winnerEmbed = new EmbedBuilder()
-      .setTitle("Giveaway Winners")
-      .setDescription(
-        `**Prize:** ${giveaway.prize}\n\n` +
-        `**Winner${winners.length !== 1 ? "s" : ""}:** ${winnerMentions}`
-      )
-      .setColor(0x57F287)
-      .setTimestamp();
+  const sendChannel = message ? message.channel : fallbackChannel;
+  if (sendChannel) {
+    if (winners.length > 0) {
+      const winnerEmbed = new EmbedBuilder()
+        .setTitle("Giveaway Winners")
+        .setDescription(
+          `**Prize:** ${giveaway.prize}\n\n` +
+          `**Winner${winners.length !== 1 ? "s" : ""}:** ${winnerMentions}`
+        )
+        .setColor(0x57F287)
+        .setTimestamp();
 
-    await message.channel.send({ content: winnerMentions, embeds: [winnerEmbed] });
-  } else {
-    const noWinnerEmbed = new EmbedBuilder()
-      .setTitle("Giveaway Ended")
-      .setDescription(`**${giveaway.prize}**\n\nNo valid entries were recorded.`)
-      .setColor(0xED4245)
-      .setTimestamp();
+      await sendChannel.send({ content: winnerMentions, embeds: [winnerEmbed] });
+    } else {
+      const noWinnerEmbed = new EmbedBuilder()
+        .setTitle("Giveaway Ended")
+        .setDescription(`**${giveaway.prize}**\n\nNo valid entries were recorded.`)
+        .setColor(0xED4245)
+        .setTimestamp();
 
-    await message.channel.send({ embeds: [noWinnerEmbed] });
+      await sendChannel.send({ embeds: [noWinnerEmbed] });
+    }
   }
 }
 
@@ -313,7 +316,7 @@ async function checkGiveaways(client, data, dataPath) {
       } catch (err) {
         if (err.code !== 10008) throw err; // only swallow "Unknown Message"
       }
-      await finalizeGiveaway(message, giveaway, data, dataPath, client);
+      await finalizeGiveaway(message, giveaway, data, dataPath, client, channel);
       saveJson(dataPath, data);
     } catch (error) {
       console.error(`Failed to end giveaway ${giveaway.message_id}:`, error);

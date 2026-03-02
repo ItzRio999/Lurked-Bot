@@ -32,6 +32,9 @@ const { hasStaffRole } = require("../utils/permissions");
 async function handleInteraction(interaction, config, data, configPath, dataPath, io) {
   // Handle modal submissions
   if (interaction.isModalSubmit()) {
+    if (interaction.customId.startsWith("securitytrap_")) {
+      return handleSecurityTrapDecision(interaction);
+    }
     if (interaction.customId.startsWith("ticket_rating_modal_")) {
       return handleTicketRating(interaction, data, dataPath, config);
     }

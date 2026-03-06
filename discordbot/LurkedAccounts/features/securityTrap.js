@@ -11,11 +11,34 @@ const {
   ChannelType,
 } = require("discord.js");
 const { purgeUserMessagesLastDays } = require("./messagePurge");
+const { saveJson, DATA_PATH } = require("../utils/fileManager");
 
 const SECURITY_TRAP_CHANNEL_ID = "1477816832718012569";
 const SECURITY_REVIEW_CHANNEL_ID = "1477818550063468704";
 const SECURITY_TIMEOUT_MS = 42 * 60 * 60 * 1000; // 42 hours
-const SECURITY_NOTICE_MARKER = "Security Trap Notice";
+const EMBED_TITLE = "DO NOT TYPE IN THIS CHANNEL.";
+
+// Module-level state set once on init
+let _data = null;
+let _config = null;
+
+function initSecurityTrap(data, config) {
+  _data = data;
+  _config = config;
+}
+
+function formatUptime(ms) {
+  if (!ms || ms <= 0) return "0m";
+  const totalSeconds = Math.floor(ms / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const parts = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  parts.push(`${minutes}m`);
+  return parts.join(" ");
+}
 
 function truncate(text, max = 1024) {
   if (!text) return "None";
@@ -32,13 +55,30 @@ function formatAttachments(message) {
 }
 
 function createSecurityNoticeEmbed() {
-  return new EmbedBuilder()
-    .setTitle("Do Not Type In This Channel")
+  const stats = _data?.security_trap_stats || {};
+  const totalBans = (stats.auto_bans || 0) + (stats.manual_bans || 0);
+  const startTime = stats.bot_start_time || Date.now();
+  const currentUptimeMs = Date.now() - startTime;
+  const longestUptimeMs = Math.max(stats.longest_uptime_ms || 0, currentUptimeMs);
+
+  const embed = new EmbedBuilder()
+    .setTitle(EMBED_TITLE)
     .setDescription(
-      "This channel is reserved for security monitoring.\n\nTyping here will trigger moderation actions."
+      "When people get hacked, they spam in every channel. This is to prevent the spread of spam and protect the server.\n\nTyping in this channel will result in a **timeout** or **ban**."
+    )
+    .addFields(
+      { name: "I've Banned", value: `» ${totalBans} Account${totalBans !== 1 ? "s" : ""}`, inline: true },
+      { name: "Uptime", value: `» ${formatUptime(currentUptimeMs)}`, inline: true },
+      { name: "Longest uptime", value: `» ${formatUptime(longestUptimeMs)}`, inline: true }
     )
     .setColor(0xED4245)
-    .setFooter({ text: SECURITY_NOTICE_MARKER });
+    .setFooter({ text: "Developed by Sxloar ₉₉₉" });
+
+  if (_config?.logo_url) {
+    embed.setThumbnail(_config.logo_url);
+  }
+
+  return embed;
 }
 
 async function clearChannelMessages(channel) {
@@ -92,6 +132,12 @@ async function handleEveryoneBan(message, config) {
       deleteMessageSeconds: 7 * 86400,
     });
     await purgeUserMessagesLastDays(message.guild, targetUser.id, 7).catch(() => {});
+
+    if (_data) {
+      if (!_data.security_trap_stats) _data.security_trap_stats = {};
+      _data.security_trap_stats.auto_bans = (_data.security_trap_stats.auto_bans || 0) + 1;
+      saveJson(DATA_PATH, _data);
+    }
 
     const auditEmbed = new EmbedBuilder()
       .setTitle("Security Trap: User Auto-Banned")
@@ -306,6 +352,12 @@ async function handleDecisionModal(interaction) {
       deleteMessageSeconds: 7 * 86400,
     }).catch(() => {});
     await purgeUserMessagesLastDays(interaction.guild, userId, 7).catch(() => {});
+
+    if (_data) {
+      if (!_data.security_trap_stats) _data.security_trap_stats = {};
+      _data.security_trap_stats.manual_bans = (_data.security_trap_stats.manual_bans || 0) + 1;
+      saveJson(DATA_PATH, _data);
+    }
   }
 
   if (action === "keep") {
@@ -363,6 +415,18 @@ async function handleSecurityTrapDecision(interaction) {
 }
 
 async function ensureSecurityTrapNotice(client) {
+  // Keep longest_uptime_ms up to date
+  if (_data) {
+    if (!_data.security_trap_stats) _data.security_trap_stats = {};
+    const stats = _data.security_trap_stats;
+    const startTime = stats.bot_start_time || Date.now();
+    const currentUptimeMs = Date.now() - startTime;
+    if (currentUptimeMs > (stats.longest_uptime_ms || 0)) {
+      stats.longest_uptime_ms = currentUptimeMs;
+      saveJson(DATA_PATH, _data);
+    }
+  }
+
   for (const guild of client.guilds.cache.values()) {
     const channel = guild.channels.cache.get(SECURITY_TRAP_CHANNEL_ID);
     if (!channel || channel.type !== ChannelType.GuildText) continue;
@@ -376,16 +440,20 @@ async function ensureSecurityTrapNotice(client) {
     const expectedNotice = recent.find((msg) => {
       if (msg.author.id !== client.user.id) return false;
       const firstEmbed = msg.embeds?.[0];
-      return firstEmbed && firstEmbed.footer && firstEmbed.footer.text === SECURITY_NOTICE_MARKER;
+      return firstEmbed && firstEmbed.title === EMBED_TITLE;
     });
 
     if (recent.size !== 1 || !expectedNotice) {
       await resetSecurityTrapChannel(channel);
+    } else {
+      // Refresh uptime and ban stats in the existing embed
+      await expectedNotice.edit({ embeds: [createSecurityNoticeEmbed()] }).catch(() => {});
     }
   }
 }
 
 module.exports = {
+  initSecurityTrap,
   handleSecurityTrapMessage,
   handleSecurityTrapDecision,
   ensureSecurityTrapNotice,

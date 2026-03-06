@@ -2,7 +2,7 @@
 require("dotenv").config();
 
 const { Client, GatewayIntentBits, Partials, REST, Routes, ActivityType, MessageFlags } = require("discord.js");
-const { loadJson, CONFIG_PATH, DATA_PATH } = require("./utils/fileManager");
+const { loadJson, saveJson, CONFIG_PATH, DATA_PATH } = require("./utils/fileManager");
 const { hasStaffRole } = require("./utils/permissions");
 const { handleInteraction } = require("./handlers/interactions");
 const commands = require("./handlers/commands");
@@ -51,8 +51,14 @@ const data = loadJson(DATA_PATH, {
   invite_tracking: { inviters: {}, joins: {} },
   timed_roles: [],
   vouches: [],
-  vouch_counter: 0
+  vouch_counter: 0,
+  security_trap_stats: { auto_bans: 0, manual_bans: 0, bot_start_time: null, longest_uptime_ms: 0 }
 });
+
+// Ensure security_trap_stats exists on older data files
+if (!data.security_trap_stats) {
+  data.security_trap_stats = { auto_bans: 0, manual_bans: 0, bot_start_time: null, longest_uptime_ms: 0 };
+}
 
 // Initialize Discord client with optimizations for Raspberry Pi
 const client = new Client({
@@ -391,6 +397,9 @@ client.on("clientReady", async () => {
 
   // Ensure protected security channel only contains the warning embed
   if (!securityTrapModule) securityTrapModule = require("./features/securityTrap");
+  securityTrapModule.initSecurityTrap(data, config);
+  data.security_trap_stats.bot_start_time = Date.now();
+  saveJson(DATA_PATH, data);
   await securityTrapModule.ensureSecurityTrapNotice(client);
   setInterval(() => {
     securityTrapModule.ensureSecurityTrapNotice(client).catch(console.error);
@@ -400,7 +409,10 @@ client.on("clientReady", async () => {
 client.on("messageCreate", async (message) => {
   if (!message.guild || message.author.bot) return;
 
-  if (!securityTrapModule) securityTrapModule = require("./features/securityTrap");
+  if (!securityTrapModule) {
+    securityTrapModule = require("./features/securityTrap");
+    securityTrapModule.initSecurityTrap(data, config);
+  }
   const handledBySecurityTrap = await securityTrapModule.handleSecurityTrapMessage(message, config);
   if (handledBySecurityTrap) return;
 

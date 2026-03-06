@@ -591,11 +591,11 @@ client.on("interactionCreate", async (interaction) => {
     await handleInteraction(interaction, config, data, CONFIG_PATH, DATA_PATH, interaction.client.io);
   } catch (error) {
     console.error("Error handling interaction:", error);
+    const msg = { content: "❌ An error occurred while processing your command.", flags: MessageFlags.Ephemeral };
     if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({
-        content: "❌ An error occurred while processing your command.",
-        flags: MessageFlags.Ephemeral,
-      }).catch(console.error);
+      await interaction.reply(msg).catch(() => {});
+    } else if (interaction.deferred && !interaction.replied) {
+      await interaction.editReply(msg).catch(() => {});
     }
   }
 });

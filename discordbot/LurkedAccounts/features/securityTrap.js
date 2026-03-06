@@ -300,12 +300,15 @@ async function handleDecisionModal(interaction) {
     return true;
   }
 
+  // Defer immediately — ban/purge/edits can take several seconds and the 3s window expires
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
   const reason = interaction.fields.getTextInputValue("reason").trim();
   const decisionMessage = interaction.channel?.messages?.cache?.get(reviewMessageId)
     || await interaction.channel?.messages?.fetch(reviewMessageId).catch(() => null);
 
   if (!decisionMessage) {
-    await interaction.reply({ content: "Could not find the review message for this decision.", flags: MessageFlags.Ephemeral });
+    await interaction.editReply({ content: "Could not find the review message for this decision." });
     return true;
   }
 
@@ -393,9 +396,8 @@ async function handleDecisionModal(interaction) {
     components: disabledRows,
   }).catch(() => {});
 
-  await interaction.reply({
+  await interaction.editReply({
     content: `Security trap decision recorded: ${action === "ban" ? "ban" : "no ban"}.`,
-    flags: MessageFlags.Ephemeral,
   });
 
   return true;

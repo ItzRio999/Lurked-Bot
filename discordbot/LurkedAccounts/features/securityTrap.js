@@ -67,9 +67,9 @@ function createSecurityNoticeEmbed() {
       "When people get hacked, they spam in every channel. This is to prevent the spread of spam and protect the server.\n\nTyping in this channel will result in a **timeout** or **ban**."
     )
     .addFields(
-      { name: "I've Banned", value: `» ${totalBans} Account${totalBans !== 1 ? "s" : ""}`, inline: true },
-      { name: "Uptime", value: `» ${formatUptime(currentUptimeMs)}`, inline: true },
-      { name: "Longest uptime", value: `» ${formatUptime(longestUptimeMs)}`, inline: true }
+      { name: "I've Banned", value: `\`» ${totalBans} Account${totalBans !== 1 ? "s" : ""}\``, inline: true },
+      { name: "Uptime", value: `\`» ${formatUptime(currentUptimeMs)}\``, inline: true },
+      { name: "Longest uptime", value: `\`» ${formatUptime(longestUptimeMs)}\``, inline: true }
     )
     .setColor(0xED4245)
     .setFooter({ text: "Developed by Sxloar ₉₉₉" });

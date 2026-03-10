@@ -11,12 +11,9 @@ const path = require("path");
 const { isOwnerOrCoowner } = require("../utils/permissions");
 const { saveJson, addLogo } = require("../utils/fileManager");
 const { createTicketPanel, createTicketFromButton, handleClaim, handleClose, handleCloseConfirm, handleCloseCancel, getPanelConfig, DEFAULT_PANEL } = require("../features/tickets_v2");
-const { showStaffReport, showStaffStats } = require("../features/staffTracking_v2");
-const { showBoostReport, showBoostLog, showCurrentBoosters } = require("../features/boostTracking");
 const { createPoll } = require("../features/polls");
 const { nukeMessages, timeoutUser, untimeoutUser, kickUser, banUser, softbanUser, unbanUser } = require("../features/moderation");
 const { createRolesPanel, handleRoleButton, getRolesPanelConfig } = require("../features/rolesPanel");
-const { announceMovie, handleMovieButton, showSchedule, addToSchedule, removeFromSchedule, showStats, showVolumeHelp, createMoviePoll, setEventLive } = require("../features/movieNight");
 const { startGiveaway, handleGiveawayButton, endGiveaway, rerollGiveaway, listGiveaways } = require("../features/giveaways");
 const { configureAutomod } = require("../features/automod");
 const { setTicketPriority, addTicketNote, viewTicketNotes, showRatingModal, handleTicketRating, toggleAutoClose, viewTicketStats, renameTicket, setRatingsChannel, addUserToTicket, removeUserFromTicket, listTicketParticipants } = require("../features/ticketEnhancements");
@@ -26,7 +23,7 @@ const { showEmbedModal, handleEmbedSubmit, showAdvancedEmbedModal, handleAdvance
 const { showInviteStats, showInviteLeaderboard } = require("../features/inviteTracking");
 const { assignTimedRole, removeTimedRole, listTimedRoles } = require("../features/timedRoles");
 const { submitVouch, backupVouches, restoreVouches } = require("../features/vouch");
-const { handleSecurityTrapDecision } = require("../features/securityTrap");
+const { handleSecurityTrapDecision, showSecurityTrapBans } = require("../features/securityTrap");
 const { hasStaffRole } = require("../utils/permissions");
 
 async function handleInteraction(interaction, config, data, configPath, dataPath, io) {
@@ -76,12 +73,6 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
     if (interaction.customId.startsWith("role_")) {
       const roleId = interaction.customId.replace("role_", "");
       return handleRoleButton(interaction, roleId, config);
-    }
-
-    // Movie night buttons
-    if (interaction.customId.startsWith("movie_")) {
-      const buttonType = interaction.customId.replace("movie_", "");
-      return handleMovieButton(interaction, buttonType, data, dataPath);
     }
 
     // Giveaway buttons
@@ -190,39 +181,6 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
       return interaction.reply({ embeds: [embed] });
     }
 
-    if (subcommand === "staff") {
-      const role1 = interaction.options.getRole("role1", true);
-      const role2 = interaction.options.getRole("role2");
-      const role3 = interaction.options.getRole("role3");
-
-      if (!config.staff_role_ids) config.staff_role_ids = [];
-
-      config.staff_role_ids = [role1.id];
-      if (role2) config.staff_role_ids.push(role2.id);
-      if (role3) config.staff_role_ids.push(role3.id);
-
-      saveJson(configPath, config);
-
-      let roleList = `• ${role1}\n`;
-      if (role2) roleList += `• ${role2}\n`;
-      if (role3) roleList += `• ${role3}\n`;
-
-      const embed = addLogo(
-        new EmbedBuilder()
-          .setTitle("Staff Tracking Enabled")
-          .setDescription(
-            `Staff tracking is now active.\n\u200b`
-          )
-          .addFields(
-            { name: "Tracked Roles", value: roleList, inline: false },
-            { name: "Features", value: "• Message tracking\n• Daily/Weekly/Monthly stats\n• Streak tracking\n• Achievements\n• Milestones", inline: false },
-            { name: "View Stats", value: "`/staffreport` - team overview\n`/staffstats` - individual stats", inline: false }
-          )
-          .setColor(0x57F287),
-        config
-      );
-      return interaction.reply({ embeds: [embed] });
-    }
   }
 
   // ============== USERINFO COMMAND (accessible to verified users) ==============
@@ -331,6 +289,25 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
     return submitVouch(interaction, config, configPath, data, dataPath);
   }
 
+  if (name === "viewbans") {
+    const canViewSecurityBans =
+      isOwnerOrCoowner(member, config) ||
+      hasStaffRole(member, config) ||
+      member.permissions.has(PermissionFlagsBits.BanMembers);
+
+    if (!canViewSecurityBans) {
+      const embed = addLogo(
+        new EmbedBuilder()
+          .setDescription("❌ You need Ban Members or a configured staff role to view security trap bans.")
+          .setColor(0xED4245),
+        config
+      );
+      return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+    }
+
+    return showSecurityTrapBans(interaction, data, config);
+  }
+
   // ============== OWNER/COOWNER COMMANDS ==============
   if (!isOwnerOrCoowner(member, config)) {
     const embed = addLogo(
@@ -348,60 +325,6 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
   }
 
   // Role Management
-  if (name === "addstaffrole") {
-    const role = interaction.options.getRole("role", true);
-    const set = new Set(config.staff_role_ids || []);
-    set.add(role.id);
-    config.staff_role_ids = Array.from(set);
-    saveJson(configPath, config);
-
-    const embed = addLogo(
-      new EmbedBuilder()
-        .setDescription(`✅ Added staff role: ${role}`)
-        .setColor(0x57F287),
-      config
-    );
-    return interaction.reply({ embeds: [embed] });
-  }
-
-  if (name === "removestaffrole") {
-    const role = interaction.options.getRole("role", true);
-    const set = new Set(config.staff_role_ids || []);
-    if (set.delete(role.id)) {
-      config.staff_role_ids = Array.from(set);
-      saveJson(configPath, config);
-      const embed = addLogo(
-        new EmbedBuilder()
-          .setDescription(`✅ Removed staff role: ${role}`)
-          .setColor(0x57F287),
-        config
-      );
-      return interaction.reply({ embeds: [embed] });
-    } else {
-      const embed = addLogo(
-        new EmbedBuilder()
-          .setDescription("❌ That role is not in the staff list!")
-          .setColor(0xED4245),
-        config
-      );
-      return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
-    }
-  }
-
-  if (name === "setboosterrole") {
-    const role = interaction.options.getRole("role", true);
-    config.booster_role_id = role.id;
-    saveJson(configPath, config);
-
-    const embed = addLogo(
-      new EmbedBuilder()
-        .setDescription(`✅ Booster role set to: ${role}`)
-        .setColor(0x57F287),
-      config
-    );
-    return interaction.reply({ embeds: [embed] });
-  }
-
   if (name === "addownerrole") {
     const role = interaction.options.getRole("role", true);
     const set = new Set(config.owner_role_ids || []);
@@ -433,29 +356,6 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
     );
     return interaction.reply({ embeds: [embed] });
   }
-
-  // Staff Reports
-  if (name === "staffreport") {
-    return showStaffReport(interaction, data, config);
-  }
-
-  if (name === "staffstats") {
-    return showStaffStats(interaction, data, config);
-  }
-
-  // Boost Management
-  if (name === "boostreport") {
-    return showBoostReport(interaction, data);
-  }
-
-  if (name === "boostlog") {
-    return showBoostLog(interaction, data);
-  }
-
-  if (name === "boosts") {
-    return showCurrentBoosters(interaction, config, data);
-  }
-
   // Ticket Setup - All-in-one configuration command
   if (name === "ticketsetup") {
     const subcommand = interaction.options.getSubcommand();
@@ -783,39 +683,6 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
       return createRolesPanel(interaction, config, configPath);
     }
   }
-
-  // Movie Night
-  if (name === "movie") {
-    const subcommand = interaction.options.getSubcommand();
-
-    if (subcommand === "announce") {
-      return announceMovie(interaction, config, data, dataPath, io);
-    }
-    if (subcommand === "schedule") {
-      return addToSchedule(interaction, data, dataPath, io);
-    }
-    if (subcommand === "upcoming") {
-      return showSchedule(interaction, data);
-    }
-    if (subcommand === "remove") {
-      return removeFromSchedule(interaction, data, dataPath, io);
-    }
-    if (subcommand === "poll") {
-      return createMoviePoll(interaction, data, dataPath);
-    }
-    if (subcommand === "volume") {
-      return showVolumeHelp(interaction);
-    }
-    if (subcommand === "stats") {
-      return showStats(interaction, data);
-    }
-  }
-
-  // Set Event Live
-  if (name === "seteventlive") {
-    return setEventLive(interaction, data, dataPath, io);
-  }
-
   // Giveaway System
   if (name === "giveaway") {
     const subcommand = interaction.options.getSubcommand();
@@ -838,7 +705,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
   if (name === "help") {
     const embed = new EmbedBuilder()
       .setTitle("Lurked Accounts Bot")
-      .setDescription("Complete server management with tickets, verification, moderation, and more.")
+      .setDescription("Complete server management with tickets, verification, moderation, security, and more.")
       .setColor(0x522081)
       .addFields(
         {
@@ -855,7 +722,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
         {
           name: "✅ Verification",
           value:
-            "`/verifypanel` - Post verify panel\n" +
+            "`/verifyembed` - Post verify panel\n" +
             "`/verify user` - Manual verify\n" +
             "`/verify unverify` - Remove verify\n" +
             "`/verify stats` - View stats\n" +
@@ -866,7 +733,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
         {
           name: "🛡️ Moderation",
           value:
-            "`/purge` - Bulk delete\n" +
+            "`/nuke` - Bulk delete\n" +
             "`/timeout` `/untimeout` - Mute\n" +
             "`/kick` `/ban` `/unban`\n" +
             "`/softban` - Kick + delete\n" +
@@ -884,30 +751,12 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
           inline: true
         },
         {
-          name: "👥 Staff & Boosts",
-          value:
-            "`/staffreport` - Team overview\n" +
-            "`/staffstats` - Individual stats\n" +
-            "`/boostreport` - Boost analytics\n" +
-            "`/currentboosters` - Active list",
-          inline: true
-        },
-        {
           name: "🎁 Giveaways",
           value:
             "`/giveaway start` - Create\n" +
             "`/giveaway end` - End early\n" +
             "`/giveaway reroll` - New winner\n" +
             "`/giveaway list` - View active",
-          inline: true
-        },
-        {
-          name: "🎬 Movie Night",
-          value:
-            "`/movie announce` - RSVP event\n" +
-            "`/movie schedule` - Add to queue\n" +
-            "`/movie poll` - Vote on movies\n" +
-            "`/movie stats` - View stats",
           inline: true
         },
         {
@@ -963,12 +812,21 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
           name: "⚙️ Configuration",
           value:
             "`/quicksetup tickets` - Fast setup\n" +
-            "`/quicksetup staff` - Staff setup\n" +
-            "`/setlogo` - Bot logo\n" +
-            "`/security dashboard` - Security",
+            "`/verifylog set` - Verify logs\n" +
+            "`/security setchannel` - Security logs",
           inline: true
         }
       )
+      .addFields({
+        name: "🚨 Security Trap",
+        value:
+          "`/security dashboard` - Security overview\n" +
+          "`/security logs` - Recent events\n" +
+          "`/viewbans` - Trap ban history\n" +
+          "`/viewbans user:@user` - Filter one user\n" +
+          "**Catches:** `@everyone` abuse, compromised accounts",
+        inline: true
+      })
       .setFooter({ text: "Use /quicksetup for fast configuration | Admin commands require permissions" })
       .setTimestamp();
 

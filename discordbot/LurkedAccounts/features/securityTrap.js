@@ -11,12 +11,13 @@ const {
   ChannelType,
 } = require("discord.js");
 const { purgeUserMessagesLastDays } = require("./messagePurge");
-const { saveJson, DATA_PATH } = require("../utils/fileManager");
+const { saveJson, DATA_PATH, addLogo } = require("../utils/fileManager");
 
 const SECURITY_TRAP_CHANNEL_ID = "1477816832718012569";
 const SECURITY_REVIEW_CHANNEL_ID = "1477818550063468704";
 const SECURITY_TIMEOUT_MS = 42 * 60 * 60 * 1000; // 42 hours
 const EMBED_TITLE = "DO NOT TYPE IN THIS CHANNEL.";
+const MAX_STORED_CASES = 250;
 
 // Module-level state set once on init
 let _data = null;
@@ -44,6 +45,80 @@ function truncate(text, max = 1024) {
   if (!text) return "None";
   if (text.length <= max) return text;
   return `${text.slice(0, max - 3)}...`;
+}
+
+function ensureTrapCases() {
+  if (!_data) return [];
+  if (!Array.isArray(_data.security_trap_cases)) {
+    _data.security_trap_cases = [];
+  }
+  return _data.security_trap_cases;
+}
+
+function recordSecurityTrapCase(caseEntry) {
+  const cases = ensureTrapCases();
+  const normalizedEntry = {
+    id: caseEntry.id || `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    created_at: caseEntry.created_at || new Date().toISOString(),
+    ...caseEntry,
+  };
+
+  cases.push(normalizedEntry);
+  if (cases.length > MAX_STORED_CASES) {
+    _data.security_trap_cases = cases.slice(-MAX_STORED_CASES);
+  }
+  saveJson(DATA_PATH, _data);
+  return normalizedEntry;
+}
+
+function updateSecurityTrapCase(caseId, updates) {
+  const cases = ensureTrapCases();
+  const existingCase = cases.find((entry) => entry.id === caseId);
+  if (!existingCase) return null;
+
+  Object.assign(existingCase, updates);
+  saveJson(DATA_PATH, _data);
+  return existingCase;
+}
+
+function discordTimestamp(dateInput, format = "f") {
+  const timestamp = Math.floor(new Date(dateInput).getTime() / 1000);
+  return `<t:${timestamp}:${format}>`;
+}
+
+function formatCaseMode(entry) {
+  return entry.action_type === "manual_ban" ? "Manual" : "Automatic";
+}
+
+function formatCopyValue(label, value) {
+  return `**${label}:** \`${value}\``;
+}
+
+function buildCaseField(entry) {
+  const bannedUser = entry.user_tag
+    ? `<@${entry.user_id}> *(${entry.user_tag})*`
+    : `<@${entry.user_id}>`;
+  const bannedBy = entry.moderator_id
+    ? `<@${entry.moderator_id}> *(${entry.moderator_tag || entry.moderator_id})*`
+    : "*Automatic system*";
+  const reviewLink = entry.review_message_url ? `\n[Review Message](${entry.review_message_url})` : "";
+  const timeoutLine = entry.timeout_applied ? "\n**Initial Action:** *42h timeout*" : "";
+  const reason = entry.reason ? truncate(entry.reason, 300) : "*No reason provided*";
+
+  const value =
+    `**Banned:** ${bannedUser}\n` +
+    `${formatCopyValue("User ID", entry.user_id)}\n` +
+    `**When:** ${discordTimestamp(entry.banned_at || entry.created_at, "F")} (${discordTimestamp(entry.banned_at || entry.created_at, "R")})\n` +
+    `**How:** *${formatCaseMode(entry)}*${timeoutLine}\n` +
+    `**Banned By:** ${bannedBy}\n` +
+    `**Trigger:** *${entry.trigger_summary || "Security trap triggered"}*\n` +
+    `**Reason:** ${reason}${reviewLink}`;
+
+  return {
+    name: `🚫 ${entry.user_tag || entry.user_id}`,
+    value: truncate(value, 550),
+    inline: false,
+  };
 }
 
 function formatAttachments(message) {
@@ -136,6 +211,27 @@ async function handleEveryoneBan(message, config) {
     if (_data) {
       if (!_data.security_trap_stats) _data.security_trap_stats = {};
       _data.security_trap_stats.auto_bans = (_data.security_trap_stats.auto_bans || 0) + 1;
+      recordSecurityTrapCase({
+        id: message.id,
+        guild_id: message.guild.id,
+        channel_id: message.channel.id,
+        trap_message_id: message.id,
+        user_id: targetUser.id,
+        user_tag: targetUser.tag,
+        moderator_id: null,
+        moderator_tag: null,
+        action_type: "auto_ban",
+        trigger_summary: "@everyone mention in protected channel",
+        reason,
+        timeout_applied: false,
+        message_content: truncate(message.content || "No text content", 1000),
+        attachments: message.attachments.map((attachment) => ({
+          name: attachment.name || "attachment",
+          url: attachment.url,
+        })),
+        created_at: new Date(message.createdTimestamp).toISOString(),
+        banned_at: new Date().toISOString(),
+      });
       saveJson(DATA_PATH, _data);
     }
 
@@ -195,6 +291,27 @@ async function handleTimeoutReview(message) {
     if (!reviewChannel) return;
 
     const caseId = message.id;
+    recordSecurityTrapCase({
+      id: caseId,
+      guild_id: message.guild.id,
+      channel_id: message.channel.id,
+      trap_message_id: message.id,
+      user_id: message.author.id,
+      user_tag: message.author.tag,
+      moderator_id: null,
+      moderator_tag: null,
+      action_type: "pending_review",
+      trigger_summary: "Typed in protected channel",
+      reason: null,
+      timeout_applied: timeoutApplied,
+      message_content: truncate(message.content || "No text content", 1000),
+      attachments: message.attachments.map((attachment) => ({
+        name: attachment.name || "attachment",
+        url: attachment.url,
+      })),
+      created_at: new Date(message.createdTimestamp).toISOString(),
+      review_status: "pending",
+    });
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId(`securitytrap_ban_${message.author.id}_${caseId}`)
@@ -220,7 +337,13 @@ async function handleTimeoutReview(message) {
       )
       .setTimestamp();
 
-    await reviewChannel.send({ embeds: [reviewEmbed], components: [row] }).catch(() => {});
+    const reviewMessage = await reviewChannel.send({ embeds: [reviewEmbed], components: [row] }).catch(() => null);
+    if (reviewMessage) {
+      updateSecurityTrapCase(caseId, {
+        review_message_id: reviewMessage.id,
+        review_message_url: reviewMessage.url,
+      });
+    }
   } catch (error) {
     console.error("Security trap timeout review failed:", error);
   }
@@ -359,6 +482,14 @@ async function handleDecisionModal(interaction) {
     if (_data) {
       if (!_data.security_trap_stats) _data.security_trap_stats = {};
       _data.security_trap_stats.manual_bans = (_data.security_trap_stats.manual_bans || 0) + 1;
+      updateSecurityTrapCase(caseId, {
+        action_type: "manual_ban",
+        review_status: "banned",
+        moderator_id: interaction.user.id,
+        moderator_tag: interaction.user.tag,
+        reason,
+        banned_at: new Date().toISOString(),
+      });
       saveJson(DATA_PATH, _data);
     }
   }
@@ -389,6 +520,15 @@ async function handleDecisionModal(interaction) {
         })
         .catch(() => {});
     }
+
+    updateSecurityTrapCase(caseId, {
+      action_type: "manual_keep",
+      review_status: "cleared",
+      moderator_id: interaction.user.id,
+      moderator_tag: interaction.user.tag,
+      reason,
+      reviewed_at: new Date().toISOString(),
+    });
   }
 
   await decisionMessage.edit({
@@ -454,9 +594,58 @@ async function ensureSecurityTrapNotice(client) {
   }
 }
 
+async function showSecurityTrapBans(interaction, data, config) {
+  const targetUser = interaction.options.getUser("user");
+  const limit = interaction.options.getInteger("limit") || 5;
+  const cases = Array.isArray(data.security_trap_cases) ? data.security_trap_cases : [];
+
+  const bannedCases = cases
+    .filter((entry) => entry.action_type === "auto_ban" || entry.action_type === "manual_ban")
+    .filter((entry) => !targetUser || entry.user_id === targetUser.id)
+    .sort((a, b) => new Date(b.banned_at || b.created_at).getTime() - new Date(a.banned_at || a.created_at).getTime())
+    .slice(0, limit);
+
+  if (bannedCases.length === 0) {
+    const emptyEmbed = addLogo(
+      new EmbedBuilder()
+        .setTitle("Security Trap Bans")
+        .setDescription(
+          targetUser
+            ? `No recorded security trap bans found for ${targetUser}.`
+            : "No recorded security trap bans found yet."
+        )
+        .setColor(0x57F287),
+      config
+    );
+    return interaction.reply({ embeds: [emptyEmbed], flags: MessageFlags.Ephemeral });
+  }
+
+  const autoCount = cases.filter((entry) => entry.action_type === "auto_ban").length;
+  const manualCount = cases.filter((entry) => entry.action_type === "manual_ban").length;
+
+  const embed = addLogo(
+    new EmbedBuilder()
+      .setTitle("Security Trap Bans")
+      .setDescription(
+        `*Professional audit view for the do-not-type trap.*\n` +
+        `**Showing:** ${bannedCases.length} most recent case${bannedCases.length !== 1 ? "s" : ""}` +
+        `${targetUser ? ` for ${targetUser}` : ""}\n` +
+        `**Totals:** ${autoCount} automatic, ${manualCount} manual`
+      )
+      .setColor(0xED4245)
+      .addFields(bannedCases.map(buildCaseField))
+      .setFooter({ text: "Tip: Discord IDs are shown in code formatting so they are easy to copy." })
+      .setTimestamp(),
+    config
+  );
+
+  return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+}
+
 module.exports = {
   initSecurityTrap,
   handleSecurityTrapMessage,
   handleSecurityTrapDecision,
   ensureSecurityTrapNotice,
+  showSecurityTrapBans,
 };

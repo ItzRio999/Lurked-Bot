@@ -87,14 +87,6 @@
         "style": "Success",
         "role_id": "YOUR_DROPS_ROLE_ID",
         "description": "Account drop notifications"
-      },
-      {
-        "id": "movies",
-        "label": "Movie Nights",
-        "emoji": "🎬",
-        "style": "Secondary",
-        "role_id": "YOUR_MOVIES_ROLE_ID",
-        "description": "Movie night pings"
       }
     ]
   },

@@ -26,33 +26,6 @@ const commands = [
         .addStringOption(opt => opt.setName("title").setDescription("Panel title (optional)"))
         .addStringOption(opt => opt.setName("color").setDescription("Panel color in hex (e.g., #5865F2) (optional)"))
     )
-    .addSubcommand(sub =>
-      sub
-        .setName("staff")
-        .setDescription("Setup staff tracking in one command")
-        .addRoleOption((opt) => opt.setName("role1").setDescription("Staff role to track").setRequired(true))
-        .addRoleOption((opt) => opt.setName("role2").setDescription("Additional staff role to track"))
-        .addRoleOption((opt) => opt.setName("role3").setDescription("Additional staff role to track"))
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-
-  // ============== STAFF & ROLE MANAGEMENT ==============
-  new SlashCommandBuilder()
-    .setName("addstaffrole")
-    .setDescription("Add a staff role to track")
-    .addRoleOption((opt) => opt.setName("role").setDescription("Role to track").setRequired(true))
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-
-  new SlashCommandBuilder()
-    .setName("removestaffrole")
-    .setDescription("Remove a staff role from tracking")
-    .addRoleOption((opt) => opt.setName("role").setDescription("Role to remove").setRequired(true))
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-
-  new SlashCommandBuilder()
-    .setName("setboosterrole")
-    .setDescription("Set the booster role for auto management")
-    .addRoleOption((opt) => opt.setName("role").setDescription("Booster role").setRequired(true))
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
   new SlashCommandBuilder()
@@ -65,58 +38,6 @@ const commands = [
     .setName("addcoownerrole")
     .setDescription("Add a co-owner role")
     .addRoleOption((opt) => opt.setName("role").setDescription("Co-owner role").setRequired(true))
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-
-  // ============== STAFF REPORTS ==============
-  new SlashCommandBuilder()
-    .setName("staffreport")
-    .setDescription("Show staff activity counts")
-    .addIntegerOption((opt) =>
-      opt
-        .setName("days")
-        .setDescription("Lookback window in days (default: 7)")
-        .setMinValue(1)
-        .setMaxValue(365)
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-
-  new SlashCommandBuilder()
-    .setName("staffstats")
-    .setDescription("Show a single staff member's activity")
-    .addUserOption((opt) => opt.setName("member").setDescription("Staff member").setRequired(true))
-    .addIntegerOption((opt) =>
-      opt
-        .setName("days")
-        .setDescription("Lookback window in days (default: 7)")
-        .setMinValue(1)
-        .setMaxValue(365)
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-
-  // ============== BOOST MANAGEMENT ==============
-  new SlashCommandBuilder()
-    .setName("boostreport")
-    .setDescription("Show boost gains/losses")
-    .addIntegerOption((opt) =>
-      opt
-        .setName("days")
-        .setDescription("Lookback window in days (default: 30)")
-        .setMinValue(1)
-        .setMaxValue(365)
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-
-  new SlashCommandBuilder()
-    .setName("boostlog")
-    .setDescription("Show recent boost events")
-    .addIntegerOption((opt) =>
-      opt.setName("limit").setDescription("Number of events (default: 5)").setMinValue(1).setMaxValue(25)
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-
-  new SlashCommandBuilder()
-    .setName("boosts")
-    .setDescription("Show current booster count and status")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
   // ============== TICKET SYSTEM ==============
@@ -213,12 +134,11 @@ const commands = [
         .addStringOption(opt =>
           opt
             .setName("id")
-            .setDescription("Role ID (announcements, drops, or movies)")
+            .setDescription("Role ID (announcements or drops)")
             .setRequired(true)
             .addChoices(
               { name: "Announcements", value: "announcements" },
-              { name: "Account Drops", value: "drops" },
-              { name: "Movie Nights", value: "movies" }
+              { name: "Account Drops", value: "drops" }
             )
         )
         .addRoleOption(opt => opt.setName("role").setDescription("The role to assign").setRequired(true))
@@ -235,85 +155,6 @@ const commands = [
       sub
         .setName("post")
         .setDescription("Post the roles panel in this channel")
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-
-  // ============== MOVIE NIGHT ==============
-  new SlashCommandBuilder()
-    .setName("movie")
-    .setDescription("Movie night commands")
-    .addSubcommand(sub =>
-      sub
-        .setName("announce")
-        .setDescription("Announce a movie")
-        .addStringOption(opt => opt.setName("title").setDescription("Movie title").setRequired(true))
-        .addStringOption(opt => opt.setName("time").setDescription("Start time (e.g., 8:00 PM, in 30 minutes)"))
-        .addChannelOption(opt => opt.setName("voice").setDescription("Voice channel"))
-        .addStringOption(opt => opt.setName("genre").setDescription("Movie genre"))
-        .addStringOption(opt => opt.setName("runtime").setDescription("Runtime (e.g., 2h 15m)"))
-        .addStringOption(opt => opt.setName("poster").setDescription("Movie poster image URL"))
-    )
-    .addSubcommand(sub =>
-      sub
-        .setName("schedule")
-        .setDescription("Add a movie to the schedule")
-        .addStringOption(opt => opt.setName("title").setDescription("Movie title").setRequired(true))
-        .addStringOption(opt => opt.setName("date").setDescription("Date and time (e.g., Dec 31 8:00 PM, 2025-12-31 20:00)").setRequired(true))
-        .addStringOption(opt => opt.setName("genre").setDescription("Movie genre"))
-    )
-    .addSubcommand(sub =>
-      sub
-        .setName("upcoming")
-        .setDescription("Show scheduled movies")
-    )
-    .addSubcommand(sub =>
-      sub
-        .setName("remove")
-        .setDescription("Remove a scheduled movie")
-        .addIntegerOption(opt => opt.setName("number").setDescription("Movie number from schedule (use /movie upcoming to see)").setRequired(true).setMinValue(1))
-    )
-    .addSubcommand(sub =>
-      sub
-        .setName("poll")
-        .setDescription("Create a movie vote poll")
-        .addStringOption(opt => opt.setName("movie1").setDescription("First movie option").setRequired(true))
-        .addStringOption(opt => opt.setName("movie2").setDescription("Second movie option").setRequired(true))
-        .addStringOption(opt => opt.setName("movie3").setDescription("Third movie option"))
-        .addStringOption(opt => opt.setName("movie4").setDescription("Fourth movie option"))
-        .addStringOption(opt => opt.setName("question").setDescription("Poll question (default: Which movie should we watch?)"))
-    )
-    .addSubcommand(sub =>
-      sub
-        .setName("volume")
-        .setDescription("Show volume booster and audio help")
-    )
-    .addSubcommand(sub =>
-      sub
-        .setName("stats")
-        .setDescription("Show movie night statistics")
-    ),
-
-  // Set Event Live Status
-  new SlashCommandBuilder()
-    .setName("seteventlive")
-    .setDescription("Set an event's live status (admin only)")
-    .addIntegerOption(opt =>
-      opt
-        .setName("eventnumber")
-        .setDescription("Event number from scheduled events list")
-        .setRequired(true)
-        .setMinValue(1)
-    )
-    .addBooleanOption(opt =>
-      opt
-        .setName("live")
-        .setDescription("Set event live (true) or not live (false)")
-        .setRequired(true)
-    )
-    .addStringOption(opt =>
-      opt
-        .setName("joinurl")
-        .setDescription("Discord invite link or custom URL (required when going live)")
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
@@ -389,6 +230,19 @@ const commands = [
     .setDescription("Unban a user")
     .addStringOption(opt => opt.setName("user_id").setDescription("User ID to unban").setRequired(true))
     .addStringOption(opt => opt.setName("reason").setDescription("Reason for unban"))
+    .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
+
+  new SlashCommandBuilder()
+    .setName("viewbans")
+    .setDescription("View security trap ban history")
+    .addUserOption(opt => opt.setName("user").setDescription("Filter results to one user"))
+    .addIntegerOption(opt =>
+      opt
+        .setName("limit")
+        .setDescription("How many recent cases to show (default: 5)")
+        .setMinValue(1)
+        .setMaxValue(10)
+    )
     .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
 
   // ============== AUTO-MODERATION ==============

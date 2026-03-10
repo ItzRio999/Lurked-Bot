@@ -31,14 +31,6 @@ const DEFAULT_ROLES_PANEL = {
       style: "Success",
       role_id: null,
       description: "Account drop notifications"
-    },
-    {
-      id: "movies",
-      label: "Movie Nights",
-      emoji: "🎬",
-      style: "Secondary",
-      role_id: null,
-      description: "Movie night pings"
     }
   ]
 };

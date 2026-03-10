@@ -3,7 +3,6 @@ require("dotenv").config();
 
 const { Client, GatewayIntentBits, Partials, REST, Routes, ActivityType, MessageFlags } = require("discord.js");
 const { loadJson, saveJson, CONFIG_PATH, DATA_PATH } = require("./utils/fileManager");
-const { hasStaffRole } = require("./utils/permissions");
 const { handleInteraction } = require("./handlers/interactions");
 const commands = require("./handlers/commands");
 const express = require('express');
@@ -14,7 +13,7 @@ const { securityHeaders } = require('./middleware/securityHeaders');
 const { generalLimiter } = require('./middleware/rateLimiter');
 
 // Lazy-load feature modules (loaded on-demand for better memory efficiency on Pi)
-let ticketsModule, staffTrackingModule, boostTrackingModule;
+let ticketsModule;
 let welcomeModule, auditLogsModule, pollsModule, giveawaysModule, automodModule, ticketEnhancementsModule;
 let verificationModule, dropSyncModule, inviteTrackingModule, timedRolesModule;
 let securityTrapModule;
@@ -39,8 +38,6 @@ if (!config.token) {
 }
 
 const data = loadJson(DATA_PATH, {
-  staff_activity: {},
-  boost_log: [],
   tickets: {},
   ticket_counter: 0,
   closed_tickets: [],
@@ -52,12 +49,16 @@ const data = loadJson(DATA_PATH, {
   timed_roles: [],
   vouches: [],
   vouch_counter: 0,
-  security_trap_stats: { auto_bans: 0, manual_bans: 0, bot_start_time: null, longest_uptime_ms: 0 }
+  security_trap_stats: { auto_bans: 0, manual_bans: 0, bot_start_time: null, longest_uptime_ms: 0 },
+  security_trap_cases: []
 });
 
 // Ensure security_trap_stats exists on older data files
 if (!data.security_trap_stats) {
   data.security_trap_stats = { auto_bans: 0, manual_bans: 0, bot_start_time: null, longest_uptime_ms: 0 };
+}
+if (!Array.isArray(data.security_trap_cases)) {
+  data.security_trap_cases = [];
 }
 
 // Initialize Discord client with optimizations for Raspberry Pi
@@ -322,13 +323,20 @@ client.on("clientReady", async () => {
 
   // Enhanced rotating status messages with Rich Presence
   const statuses = [
-    { name: "your support tickets 🎫", type: ActivityType.Watching, state: "Managing Tickets" },
-    { name: "Lurked Accounts 🔐", type: ActivityType.Playing, state: "Premium Service" },
-    { name: "with premium services 💎", type: ActivityType.Playing, state: "Elite Access" },
-    { name: "staff performance 📊", type: ActivityType.Watching, state: "Tracking Activity" },
-    { name: "to /help commands ❓", type: ActivityType.Listening, state: "Ready to Assist" },
-    { name: `${client.guilds.cache.size} server${client.guilds.cache.size !== 1 ? 's' : ''} 🌐`, type: ActivityType.Watching, state: "Multi-Server" },
+    { name: "for spam traps 🛡️", type: ActivityType.Watching, state: "Security Trap Online" },
+    { name: "the do-not-type channel 👀", type: ActivityType.Watching, state: "Trap Monitoring" },
+    { name: "for @everyone abuse 🚨", type: ActivityType.Watching, state: "Compromise Detection" },
+    { name: "security reviews 🔍", type: ActivityType.Watching, state: "Manual Review Queue" },
+    { name: "scammers get caught 🎯", type: ActivityType.Playing, state: "Trap Active" },
+    { name: "cleanup after raids 🧹", type: ActivityType.Playing, state: "Server Defense" },
     { name: "for bad words 🛡️", type: ActivityType.Watching, state: "Auto-Moderation" },
+    { name: "your support tickets 🎫", type: ActivityType.Watching, state: "Managing Tickets" },
+    { name: "to /help ❓", type: ActivityType.Listening, state: "Ready to Assist" },
+    { name: `${client.guilds.cache.size} server${client.guilds.cache.size !== 1 ? 's' : ''} 🌐`, type: ActivityType.Watching, state: "Multi-Server" },
+    { name: "Made by sxloar <3", type: ActivityType.Playing, state: "Creator Credit" },
+    { name: "Developed by sxloar <3", type: ActivityType.Playing, state: "Built with Care" },
+    { name: "security first 🔐", type: ActivityType.Playing, state: "Protection Mode" },
+    { name: "raid prevention mode ⚔️", type: ActivityType.Playing, state: "Defense Ready" },
   ];
 
   let currentStatus = 0;
@@ -420,7 +428,6 @@ client.on("messageCreate", async (message) => {
   if (!automodModule) automodModule = require("./features/automod");
   if (!ticketEnhancementsModule) ticketEnhancementsModule = require("./features/ticketEnhancements");
   if (!ticketsModule) ticketsModule = require("./features/tickets_v2");
-  if (!staffTrackingModule) staffTrackingModule = require("./features/staffTracking_v2");
   if (!auditLogsModule) auditLogsModule = require("./features/auditLogs");
   if (!dropSyncModule) dropSyncModule = require("./features/dropSync");
 
@@ -429,11 +436,6 @@ client.on("messageCreate", async (message) => {
 
   // Update ticket activity tracking
   ticketEnhancementsModule.updateTicketActivity(message.channel.id, data, DATA_PATH);
-
-  // Track staff activity
-  if (message.member && hasStaffRole(message.member, config)) {
-    staffTrackingModule.incStaffActivity(message.author.id, data, DATA_PATH);
-  }
 
   // Log messages in tickets for transcripts
   ticketsModule.logTicketMessage(message, data, DATA_PATH);
@@ -526,29 +528,9 @@ client.on("guildMemberRemove", async (member) => {
   await verificationModule.handleMemberLeave(member, config, data, DATA_PATH);
 });
 
-// Member updates (boost tracking and role changes)
+// Member updates (role changes)
 client.on("guildMemberUpdate", async (before, after) => {
-  if (!boostTrackingModule) boostTrackingModule = require("./features/boostTracking");
   if (!auditLogsModule) auditLogsModule = require("./features/auditLogs");
-
-  // Boost tracking
-  const boosterRoleId = config.booster_role_id;
-  const boosterRole = boosterRoleId ? after.guild.roles.cache.get(boosterRoleId) : null;
-
-  const beforeBoost = Boolean(before.premiumSince);
-  const afterBoost = Boolean(after.premiumSince);
-
-  if (!beforeBoost && afterBoost) {
-    boostTrackingModule.addBoostLog(after.id, "boost_start", data, DATA_PATH);
-    if (boosterRole && !after.roles.cache.has(boosterRoleId)) {
-      await after.roles.add(boosterRole, "Auto-manage boost role (gained)").catch(console.error);
-    }
-  } else if (beforeBoost && !afterBoost) {
-    boostTrackingModule.addBoostLog(after.id, "boost_end", data, DATA_PATH);
-    if (boosterRole && after.roles.cache.has(boosterRoleId)) {
-      await after.roles.remove(boosterRole, "Auto-manage boost role (lost)").catch(console.error);
-    }
-  }
 
   // Log role changes
   await auditLogsModule.logRoleUpdate(before, after, config);

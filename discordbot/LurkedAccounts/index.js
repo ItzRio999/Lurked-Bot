@@ -592,7 +592,8 @@ client.on("interactionCreate", async (interaction) => {
   } catch (error) {
     console.error("Error handling interaction:", error);
     const msg = { content: "❌ An error occurred while processing your command.", flags: MessageFlags.Ephemeral };
-    if (!interaction.replied && !interaction.deferred) {
+    const interactionAgeMs = Date.now() - interaction.createdTimestamp;
+    if (!interaction.replied && !interaction.deferred && interactionAgeMs < 2500) {
       await interaction.reply(msg).catch(() => {});
     } else if (interaction.deferred && !interaction.replied) {
       await interaction.editReply(msg).catch(() => {});

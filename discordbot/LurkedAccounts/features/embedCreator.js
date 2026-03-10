@@ -71,23 +71,22 @@ async function showEmbedModal(interaction) {
  * Handle embed creation modal submission
  */
 async function handleEmbedSubmit(interaction, config) {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   // Extract channel ID from custom ID
   const channelId = interaction.customId.replace("embed_create_", "");
   const channel = interaction.guild.channels.cache.get(channelId);
 
   if (!channel) {
-    return interaction.reply({
+    return interaction.editReply({
       content: "❌ Could not find the target channel!",
-      flags: MessageFlags.Ephemeral
     });
   }
 
   // Check if bot has permission to send messages in the channel
   const botMember = interaction.guild.members.me;
   if (!channel.permissionsFor(botMember).has(PermissionFlagsBits.SendMessages)) {
-    return interaction.reply({
+    return interaction.editReply({
       content: `❌ I don't have permission to send messages in ${channel}!`,
-      flags: MessageFlags.Ephemeral
     });
   }
 
@@ -141,12 +140,11 @@ async function handleEmbedSubmit(interaction, config) {
       confirmEmbed.setThumbnail(config.logo_url);
     }
 
-    await interaction.reply({ embeds: [confirmEmbed], flags: MessageFlags.Ephemeral });
+    await interaction.editReply({ embeds: [confirmEmbed] });
   } catch (error) {
     console.error("Error sending embed:", error);
-    return interaction.reply({
+    return interaction.editReply({
       content: `❌ Failed to send embed: ${error.message}`,
-      flags: MessageFlags.Ephemeral
     });
   }
 }
@@ -221,21 +219,20 @@ async function showAdvancedEmbedModal(interaction) {
  * Handle advanced embed creation modal submission
  */
 async function handleAdvancedEmbedSubmit(interaction, config) {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const channelId = interaction.customId.replace("embed_advanced_", "");
   const channel = interaction.guild.channels.cache.get(channelId);
 
   if (!channel) {
-    return interaction.reply({
+    return interaction.editReply({
       content: "❌ Could not find the target channel!",
-      flags: MessageFlags.Ephemeral
     });
   }
 
   const botMember = interaction.guild.members.me;
   if (!channel.permissionsFor(botMember).has(PermissionFlagsBits.SendMessages)) {
-    return interaction.reply({
+    return interaction.editReply({
       content: `❌ I don't have permission to send messages in ${channel}!`,
-      flags: MessageFlags.Ephemeral
     });
   }
 
@@ -328,12 +325,11 @@ async function handleAdvancedEmbedSubmit(interaction, config) {
       confirmEmbed.setThumbnail(config.logo_url);
     }
 
-    await interaction.reply({ embeds: [confirmEmbed], flags: MessageFlags.Ephemeral });
+    await interaction.editReply({ embeds: [confirmEmbed] });
   } catch (error) {
     console.error("Error sending embed:", error);
-    return interaction.reply({
+    return interaction.editReply({
       content: `❌ Failed to send embed: ${error.message}`,
-      flags: MessageFlags.Ephemeral
     });
   }
 }

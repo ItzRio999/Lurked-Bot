@@ -1,0 +1,7 @@
+tunnel: REPLACE_WITH_TUNNEL_ID
+credentials-file: /etc/cloudflared/REPLACE_WITH_TUNNEL_ID.json
+
+ingress:
+  - hostname: api.lurkedaccounts.tech
+    service: http://localhost:3002
+  - service: http_status:404

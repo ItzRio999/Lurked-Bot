@@ -101,3 +101,4 @@ discordbot/LurkedAccounts/.env.example
 dist.zip
 discordbot/LurkedAccounts/imageexample.png
 discordbot/LurkedAccounts/logo/LurkedBot-logo.png
+discordbot/LurkedAccounts/.env.example

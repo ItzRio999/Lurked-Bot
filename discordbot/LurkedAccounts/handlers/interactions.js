@@ -25,9 +25,11 @@ const { assignTimedRole, removeTimedRole, listTimedRoles } = require("../feature
 const { submitVouch, backupVouches, restoreVouches } = require("../features/vouch");
 const { handleSecurityTrapDecision, showSecurityTrapBans } = require("../features/securityTrap");
 const { requestMovie, listMovieRequests } = require("../features/movieRequests");
-const { hasStaffRole } = require("../utils/permissions");
+const { hasStaffRole, hasVerifiedRole } = require("../utils/permissions");
 
 async function handleInteraction(interaction, config, data, configPath, dataPath, io) {
+  const verifiedCommandNames = new Set(["help", "userinfo", "invites", "requestmovie", "vouch"]);
+
   // Handle modal submissions
   if (interaction.isModalSubmit()) {
     if (interaction.customId.startsWith("securitytrap_")) {
@@ -125,6 +127,16 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
   const member = interaction.member;
   const name = interaction.commandName;
 
+  if (verifiedCommandNames.has(name) && !hasVerifiedRole(member, config)) {
+    const embed = addLogo(
+      new EmbedBuilder()
+        .setDescription("❌ You need the verified member role to use this command.")
+        .setColor(0xED4245),
+      config
+    );
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+  }
+
   // ============== QUICK SETUP ==============
   if (name === "quicksetup") {
     const subcommand = interaction.options.getSubcommand();
@@ -186,19 +198,6 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
 
   // ============== USERINFO COMMAND (accessible to verified users) ==============
   if (name === "userinfo") {
-    // Check if user has the required role (1451251793303703616)
-    const hasRequiredRole = member.roles.cache.has("1451251793303703616");
-
-    if (!hasRequiredRole) {
-      const embed = addLogo(
-        new EmbedBuilder()
-          .setDescription("❌ You need to be verified to use this command!")
-          .setColor(0xED4245),
-        config
-      );
-      return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
-    }
-
     const targetUser = interaction.options.getUser("user") || interaction.user;
     const targetMember = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
 

@@ -1,5 +1,6 @@
 const { EmbedBuilder, MessageFlags, ChannelType } = require("discord.js");
 const { saveJson, addLogo } = require("../utils/fileManager");
+const { hasVerifiedRole } = require("../utils/permissions");
 
 const ALLOWED_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif", "mp4"];
 
@@ -25,10 +26,10 @@ async function submitVouch(interaction, config, configPath, data, dataPath) {
   }
 
   // Enforce role requirement
-  const REQUIRED_ROLE_ID = "1451251793303703616";
-  if (!interaction.member.roles.cache.has(REQUIRED_ROLE_ID)) {
+  const verifiedRoleId = config?.verification?.verified_role_id || "1451251793303703616";
+  if (!hasVerifiedRole(interaction.member, config)) {
     const embed = new EmbedBuilder()
-      .setDescription(`❌ You need the <@&${REQUIRED_ROLE_ID}> role to submit a vouch.`)
+      .setDescription(`❌ You need the <@&${verifiedRoleId}> role to submit a vouch.`)
       .setColor(0xED4245);
     return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }

@@ -33,6 +33,15 @@ function hasStaffRole(member, config) {
   return false;
 }
 
+function hasVerifiedRole(member, config, fallbackRoleId = "1451251793303703616") {
+  if (!member) return false;
+
+  const verifiedRoleId = config?.verification?.verified_role_id || fallbackRoleId;
+  if (!verifiedRoleId) return false;
+
+  return member.roles.cache.has(String(verifiedRoleId));
+}
+
 function mention(userId) {
   return `<@${userId}>`;
 }
@@ -40,5 +49,6 @@ function mention(userId) {
 module.exports = {
   isOwnerOrCoowner,
   hasStaffRole,
+  hasVerifiedRole,
   mention,
 };

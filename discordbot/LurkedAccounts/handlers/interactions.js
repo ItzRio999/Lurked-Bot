@@ -1496,6 +1496,43 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
     return listMovieRequests(interaction, config, data);
   }
 
+  if (name === "debugroles") {
+    const targetUser = interaction.options.getUser("user") || interaction.user;
+    const targetMember = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
+
+    if (!targetMember) {
+      const embed = addLogo(
+        new EmbedBuilder()
+          .setDescription("âŒ User not found in this server!")
+          .setColor(0xED4245),
+        config
+      );
+      return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+    }
+
+    const verifiedRoleId = getVerifiedRoleId(config);
+    const roleEntries = targetMember.roles.cache
+      .filter((role) => role.id !== interaction.guild.id)
+      .sort((a, b) => b.position - a.position)
+      .map((role) => `${role.name} (${role.id})`);
+
+    const embed = addLogo(
+      new EmbedBuilder()
+        .setTitle("Role Debug")
+        .setColor(0x5865F2)
+        .addFields(
+          { name: "User", value: `${targetUser.tag} (${targetUser.id})`, inline: false },
+          { name: "Verified Role ID", value: verifiedRoleId, inline: true },
+          { name: "Has Verified Role", value: hasVerifiedRole(targetMember, config) ? "Yes" : "No", inline: true },
+          { name: "Role Count", value: String(roleEntries.length), inline: true },
+          { name: "Roles Seen By Bot", value: roleEntries.length > 0 ? roleEntries.join("\n").slice(0, 1024) : "No roles", inline: false }
+        ),
+      config
+    );
+
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+  }
+
   // ============== TIMED ROLES ==============
   if (name === "timedrole") {
     return assignTimedRole(interaction, data, dataPath, config);

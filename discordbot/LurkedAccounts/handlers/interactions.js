@@ -24,6 +24,7 @@ const { showInviteStats, showInviteLeaderboard } = require("../features/inviteTr
 const { assignTimedRole, removeTimedRole, listTimedRoles } = require("../features/timedRoles");
 const { submitVouch, backupVouches, restoreVouches } = require("../features/vouch");
 const { handleSecurityTrapDecision, showSecurityTrapBans } = require("../features/securityTrap");
+const { requestMovie, listMovieRequests } = require("../features/movieRequests");
 const { hasStaffRole } = require("../utils/permissions");
 
 async function handleInteraction(interaction, config, data, configPath, dataPath, io) {
@@ -1484,6 +1485,14 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
 
   if (name === "inviteleaderboard") {
     return showInviteLeaderboard(interaction, data, config);
+  }
+
+  if (name === "requestmovie") {
+    return requestMovie(interaction, config, data, dataPath);
+  }
+
+  if (name === "movierequests") {
+    return listMovieRequests(interaction, config, data);
   }
 
   // ============== TIMED ROLES ==============

@@ -49,6 +49,8 @@ const data = loadJson(DATA_PATH, {
   timed_roles: [],
   vouches: [],
   vouch_counter: 0,
+  movie_requests: [],
+  movie_request_counter: 0,
   security_trap_stats: { auto_bans: 0, manual_bans: 0, bot_start_time: null, longest_uptime_ms: 0 },
   security_trap_cases: []
 });
@@ -59,6 +61,12 @@ if (!data.security_trap_stats) {
 }
 if (!Array.isArray(data.security_trap_cases)) {
   data.security_trap_cases = [];
+}
+if (!Array.isArray(data.movie_requests)) {
+  data.movie_requests = [];
+}
+if (!Number.isInteger(data.movie_request_counter)) {
+  data.movie_request_counter = 0;
 }
 
 // Initialize Discord client with optimizations for Raspberry Pi

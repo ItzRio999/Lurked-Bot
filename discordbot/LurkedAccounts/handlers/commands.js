@@ -708,6 +708,55 @@ const commands = [
     .setDescription("Show the top inviters in the server")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
+  // ============== MOVIE REQUESTS ==============
+  new SlashCommandBuilder()
+    .setName("requestmovie")
+    .setDescription("Request a movie for a future movie night")
+    .addStringOption((opt) =>
+      opt
+        .setName("title")
+        .setDescription("Movie title")
+        .setRequired(true)
+        .setMaxLength(200)
+    )
+    .addIntegerOption((opt) =>
+      opt
+        .setName("year")
+        .setDescription("Release year to improve movie matching")
+        .setRequired(true)
+        .setMinValue(1900)
+        .setMaxValue(2100)
+    )
+    .addStringOption((opt) =>
+      opt
+        .setName("details")
+        .setDescription("Why you want it hosted or any extra notes")
+        .setMaxLength(500)
+    )
+    .addStringOption((opt) =>
+      opt
+        .setName("link")
+        .setDescription("Optional IMDb, TMDb, trailer, or reference link")
+        .setMaxLength(500)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("movierequests")
+    .setDescription("View recent movie requests")
+    .addIntegerOption((opt) =>
+      opt
+        .setName("limit")
+        .setDescription("How many requests to show")
+        .setMinValue(1)
+        .setMaxValue(10)
+    )
+    .addUserOption((opt) =>
+      opt
+        .setName("user")
+        .setDescription("Filter requests to one user")
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
   // ============== TIMED ROLES ==============
   new SlashCommandBuilder()
     .setName("timedrole")

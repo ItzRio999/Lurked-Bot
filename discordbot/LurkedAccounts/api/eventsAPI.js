@@ -151,6 +151,141 @@ function validateJoinUrl(url) {
   }
 }
 
+function ensureEventDataShape(data) {
+  if (!Array.isArray(data.movie_schedule)) {
+    data.movie_schedule = [];
+  }
+
+  if (!Array.isArray(data.movie_requests)) {
+    data.movie_requests = [];
+  }
+
+  if (!Number.isInteger(data.movie_request_counter)) {
+    data.movie_request_counter = 0;
+  }
+}
+
+async function buildScheduledEvent(title, date, genre, addedBy, requestId = null) {
+  let movieData = null;
+
+  try {
+    movieData = await searchMoviePoster(title);
+    if (movieData) {
+      console.log(`🎬 Found poster for "${title}": ${movieData.posterUrl}`);
+    }
+  } catch (tmdbError) {
+    console.warn('⚠️ Failed to fetch movie poster, continuing without it:', tmdbError.message);
+  }
+
+  return {
+    id: Date.now().toString(),
+    title,
+    date,
+    genre: genre?.trim() || null,
+    posterUrl: movieData?.posterUrl || null,
+    posterUrlLarge: movieData?.posterUrlLarge || null,
+    posterUrlSmall: movieData?.posterUrlSmall || null,
+    tmdbId: movieData?.tmdbId || null,
+    added_by: addedBy,
+    added_at: new Date().toISOString(),
+    source_request_id: requestId,
+  };
+}
+
+function buildScheduledEventPayload(event) {
+  return {
+    ...event,
+    dateFormatted: formatEventDate(event.date),
+    description: buildEventDescription({ genre: event.genre, status: 'scheduled' }),
+    ...mapGenreToTheme(event.genre),
+    posterUrl: event.posterUrl,
+    posterUrlLarge: event.posterUrlLarge,
+    posterUrlSmall: event.posterUrlSmall
+  };
+}
+
+async function emitRequesterDm(client, request, outcome, adminNote, scheduledEvent) {
+  if (!client || !request?.requester_id) {
+    return { sent: false, reason: 'missing_client_or_user' };
+  }
+
+  try {
+    const { EmbedBuilder } = require('discord.js');
+    const user = await client.users.fetch(request.requester_id);
+
+    if (!user) {
+      return { sent: false, reason: 'user_not_found' };
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle(outcome === 'accepted' ? 'Movie Request Accepted' : 'Movie Request Denied')
+      .setColor(outcome === 'accepted' ? 0x57F287 : 0xED4245)
+      .addFields(
+        { name: 'Request', value: request.title || 'Unknown title', inline: false },
+        { name: 'Outcome', value: outcome === 'accepted' ? 'Accepted' : 'Denied', inline: true }
+      )
+      .setTimestamp();
+
+    if (scheduledEvent) {
+      embed.addFields(
+        { name: 'Event Title', value: scheduledEvent.title, inline: false },
+        { name: 'Date', value: formatEventDate(scheduledEvent.date), inline: true },
+        { name: 'Genre', value: scheduledEvent.genre || 'Not specified', inline: true }
+      );
+    }
+
+    if (adminNote) {
+      embed.addFields({ name: 'Note', value: adminNote.slice(0, 1024), inline: false });
+    }
+
+    await user.send({ embeds: [embed] });
+    return { sent: true };
+  } catch (error) {
+    console.warn(`⚠️ Failed to DM requester ${request.requester_id}:`, error.message);
+    return { sent: false, reason: error.message };
+  }
+}
+
+function buildMovieRequestResponse(request) {
+  return {
+    id: request.id,
+    title: request.title,
+    year: request.year || null,
+    details: request.details || null,
+    link: request.link || null,
+    genre: request.genre || null,
+    status: request.status || 'open',
+    requesterId: request.requester_id,
+    requesterTag: request.requester_tag || null,
+    requesterName: request.requester_name || null,
+    requesterMention: request.requester_id ? `<@${request.requester_id}>` : null,
+    guildId: request.guild_id || null,
+    channelId: request.channel_id || null,
+    createdAt: request.created_at || null,
+    reviewedAt: request.reviewed_at || null,
+    reviewedBy: request.reviewed_by || null,
+    reviewedByEmail: request.reviewed_by_email || null,
+    adminNote: request.admin_note || null,
+    scheduledEventId: request.scheduled_event_id || null,
+    scheduledEventTitle: request.scheduled_event_title || null,
+    decisionDmSent: Boolean(request.decision_dm_sent),
+    decisionDmError: request.decision_dm_error || null,
+    matchedMovie: request.matched_movie ? {
+      tmdbId: request.matched_movie.tmdb_id || null,
+      title: request.matched_movie.title || null,
+      posterUrl: request.matched_movie.poster_url || null,
+      posterUrlLarge: request.matched_movie.poster_url_large || null,
+      posterUrlSmall: request.matched_movie.poster_url_small || null,
+      backdropUrl: request.matched_movie.backdrop_url || null,
+      releaseDate: request.matched_movie.release_date || null,
+      overview: request.matched_movie.overview || null,
+      runtime: request.matched_movie.runtime || null,
+      voteAverage: request.matched_movie.vote_average || null,
+      genres: request.matched_movie.genres || []
+    } : null,
+  };
+}
+
 // GET /api/events - Fetch all events (movies for now, extensible for other event types)
 router.get('/api/events', async (req, res) => {
   try {
@@ -166,6 +301,7 @@ router.get('/api/events', async (req, res) => {
 
     // Load runtime data
     const data = loadJson(DATA_PATH, {});
+    ensureEventDataShape(data);
 
     const events = [];
 
@@ -311,11 +447,7 @@ router.post('/api/events', verifyAuth, verifyAdmin, async (req, res) => {
 
     // Load current data
     const data = loadJson(DATA_PATH, {});
-
-    // Ensure movie_schedule array exists
-    if (!data.movie_schedule) {
-      data.movie_schedule = [];
-    }
+    ensureEventDataShape(data);
 
     // Fetch movie poster from TMDb (non-blocking - don't fail if it errors)
     let movieData = null;
@@ -424,6 +556,7 @@ router.delete('/api/events/:eventId', verifyAuth, verifyAdmin, async (req, res) 
 
     // Load current data
     const data = loadJson(DATA_PATH, {});
+    ensureEventDataShape(data);
 
     if (!data.movie_schedule || !Array.isArray(data.movie_schedule)) {
       return res.status(404).json({
@@ -641,6 +774,176 @@ router.patch('/api/events/:eventId/live', verifyAuth, verifyAdmin, async (req, r
     res.status(500).json({
       success: false,
       error: 'Failed to update event live status'
+    });
+  }
+});
+
+// GET /api/movie-requests - Fetch all movie requests for admin review
+router.get('/api/movie-requests', verifyAuth, verifyAdmin, async (req, res) => {
+  try {
+    const data = loadJson(DATA_PATH, {});
+    ensureEventDataShape(data);
+
+    const requests = data.movie_requests
+      .slice()
+      .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+      .map(buildMovieRequestResponse);
+
+    res.json({
+      success: true,
+      requests,
+      count: requests.length
+    });
+  } catch (error) {
+    console.error('❌ Error fetching movie requests:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch movie requests',
+      requests: []
+    });
+  }
+});
+
+// PATCH /api/movie-requests/:requestId/review - Accept or deny a movie request
+router.patch('/api/movie-requests/:requestId/review', verifyAuth, verifyAdmin, async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { decision, adminNote, eventTitle, eventDate, genre } = req.body;
+    const io = req.app.locals.io;
+    const client = req.app.locals.client;
+
+    if (!requestId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Request ID is required'
+      });
+    }
+
+    if (!['accepted', 'denied'].includes(decision)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Decision must be accepted or denied'
+      });
+    }
+
+    const data = loadJson(DATA_PATH, {});
+    ensureEventDataShape(data);
+
+    const requestIndex = data.movie_requests.findIndex((request) => String(request.id) === String(requestId));
+    if (requestIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        error: 'Movie request not found'
+      });
+    }
+
+    const request = data.movie_requests[requestIndex];
+    if (request.status && request.status !== 'open') {
+      return res.status(400).json({
+        success: false,
+        error: `Request already ${request.status}`
+      });
+    }
+
+    let scheduledEvent = null;
+
+    if (decision === 'accepted') {
+      const trimmedEventTitle = typeof eventTitle === 'string' ? eventTitle.trim() : '';
+      if (trimmedEventTitle.length < 3 || trimmedEventTitle.length > 100) {
+        return res.status(400).json({
+          success: false,
+          error: 'Accepted requests need an event title between 3 and 100 characters'
+        });
+      }
+
+      const parsedDate = new Date(eventDate);
+      if (!eventDate || Number.isNaN(parsedDate.getTime())) {
+        return res.status(400).json({
+          success: false,
+          error: 'Accepted requests need a valid event date'
+        });
+      }
+
+      if (parsedDate <= new Date()) {
+        return res.status(400).json({
+          success: false,
+          error: 'Accepted event date must be in the future'
+        });
+      }
+
+      scheduledEvent = await buildScheduledEvent(
+        trimmedEventTitle,
+        parsedDate.toISOString(),
+        genre || request.genre || null,
+        req.user.uid,
+        request.id
+      );
+
+      data.movie_schedule.push(scheduledEvent);
+      request.scheduled_event_id = scheduledEvent.id;
+      request.scheduled_event_title = scheduledEvent.title;
+    }
+
+    request.status = decision;
+    request.admin_note = typeof adminNote === 'string' ? adminNote.trim() || null : null;
+    request.reviewed_at = new Date().toISOString();
+    request.reviewed_by = req.user.uid;
+    request.reviewed_by_email = req.user.email || null;
+    request.genre = typeof genre === 'string' ? genre.trim() || null : request.genre || null;
+
+    const dmResult = await emitRequesterDm(client, request, decision, request.admin_note, scheduledEvent);
+    request.decision_dm_sent = dmResult.sent;
+    request.decision_dm_error = dmResult.sent ? null : dmResult.reason || 'unknown_error';
+
+    data.movie_requests[requestIndex] = request;
+    saveJson(DATA_PATH, data);
+
+    if (io) {
+      io.emit('movieRequestReviewed', buildMovieRequestResponse(request));
+      if (scheduledEvent) {
+        const theme = mapGenreToTheme(scheduledEvent.genre);
+        io.emit('movieScheduleAdded', {
+          id: scheduledEvent.id,
+          type: 'movie',
+          title: scheduledEvent.title,
+          date: scheduledEvent.date,
+          dateFormatted: formatEventDate(scheduledEvent.date),
+          description: buildEventDescription({ genre: scheduledEvent.genre, status: 'scheduled' }),
+          genre: scheduledEvent.genre,
+          status: 'scheduled',
+          icon: theme.icon,
+          color: theme.color,
+          posterUrl: scheduledEvent.posterUrl,
+          posterUrlLarge: scheduledEvent.posterUrlLarge,
+          posterUrlSmall: scheduledEvent.posterUrlSmall
+        });
+      }
+    }
+
+    try {
+      await admin.firestore().collection('adminLogs').add({
+        action: decision === 'accepted' ? 'Accepted movie request' : 'Denied movie request',
+        details: decision === 'accepted'
+          ? `Accepted "${request.title}" and scheduled "${scheduledEvent.title}" for ${formatEventDate(scheduledEvent.date)}`
+          : `Denied "${request.title}"`,
+        adminEmail: req.user.email || 'Unknown',
+        timestamp: admin.firestore.FieldValue.serverTimestamp()
+      });
+    } catch (logError) {
+      console.error('Failed to log movie request review:', logError);
+    }
+
+    res.json({
+      success: true,
+      request: buildMovieRequestResponse(request),
+      scheduledEvent: scheduledEvent ? buildScheduledEventPayload(scheduledEvent) : null,
+      message: decision === 'accepted' ? 'Movie request accepted and event scheduled' : 'Movie request denied'
+    });
+  } catch (error) {
+    console.error('❌ Error reviewing movie request:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to review movie request'
     });
   }
 });

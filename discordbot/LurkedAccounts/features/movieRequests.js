@@ -24,6 +24,8 @@ function truncate(value, maxLength) {
 async function requestMovie(interaction, config, data, dataPath) {
   ensureMovieRequestStore(data);
 
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
   const title = interaction.options.getString("title", true).trim();
   const year = interaction.options.getInteger("year", true);
   const details = interaction.options.getString("details")?.trim() || null;
@@ -36,7 +38,7 @@ async function requestMovie(interaction, config, data, dataPath) {
         .setColor(0xED4245),
       config
     );
-    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+    return interaction.editReply({ embeds: [embed] });
   }
 
   if (title.length > 200) {
@@ -46,14 +48,19 @@ async function requestMovie(interaction, config, data, dataPath) {
         .setColor(0xED4245),
       config
     );
-    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+    return interaction.editReply({ embeds: [embed] });
   }
-
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => interaction.member);
   if (!hasVerifiedRole(member, config)) {
     const verifiedRoleId = getVerifiedRoleId(config);
+    const memberRoleIds = member?.roles?.cache ? [...member.roles.cache.keys()] : [];
+    console.log("[requestmovie] verified role check failed", {
+      userId: interaction.user.id,
+      guildId: interaction.guildId,
+      verifiedRoleId,
+      memberRoleIds,
+    });
     const embed = addLogo(
       new EmbedBuilder()
         .setDescription(`You need the <@&${verifiedRoleId}> role to use this command.`)

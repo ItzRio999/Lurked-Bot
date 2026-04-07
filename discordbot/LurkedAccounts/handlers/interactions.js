@@ -28,7 +28,7 @@ const { requestMovie, listMovieRequests } = require("../features/movieRequests")
 const { hasStaffRole, hasVerifiedRole, getVerifiedRoleId } = require("../utils/permissions");
 
 async function handleInteraction(interaction, config, data, configPath, dataPath, io) {
-  const verifiedCommandNames = new Set(["help", "userinfo", "invites", "requestmovie", "vouch"]);
+  const verifiedCommandNames = new Set(["help", "userinfo", "invites", "vouch"]);
 
   // Handle modal submissions
   if (interaction.isModalSubmit()) {
@@ -124,7 +124,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
     return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 
-  const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => interaction.member);
+  const member = interaction.member;
   const name = interaction.commandName;
 
   if (verifiedCommandNames.has(name) && !hasVerifiedRole(member, config)) {

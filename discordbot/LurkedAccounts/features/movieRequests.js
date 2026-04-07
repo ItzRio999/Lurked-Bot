@@ -1,6 +1,7 @@
 const { EmbedBuilder, MessageFlags } = require("discord.js");
 const { saveJson, addLogo } = require("../utils/fileManager");
 const { searchMoviePoster } = require("../utils/tmdb");
+const { hasVerifiedRole, getVerifiedRoleId } = require("../utils/permissions");
 
 function ensureMovieRequestStore(data) {
   if (!Array.isArray(data.movie_requests)) {
@@ -49,6 +50,18 @@ async function requestMovie(interaction, config, data, dataPath) {
   }
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => interaction.member);
+  if (!hasVerifiedRole(member, config)) {
+    const verifiedRoleId = getVerifiedRoleId(config);
+    const embed = addLogo(
+      new EmbedBuilder()
+        .setDescription(`You need the <@&${verifiedRoleId}> role to use this command.`)
+        .setColor(0xED4245),
+      config
+    );
+    return interaction.editReply({ embeds: [embed] });
+  }
 
   data.movie_request_counter += 1;
 

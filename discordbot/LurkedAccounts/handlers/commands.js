@@ -757,6 +757,16 @@ const commands = [
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
+  new SlashCommandBuilder()
+    .setName("debugroles")
+    .setDescription("Show the roles the bot sees for a user")
+    .addUserOption((opt) =>
+      opt
+        .setName("user")
+        .setDescription("User to inspect")
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
   // ============== TIMED ROLES ==============
   new SlashCommandBuilder()
     .setName("timedrole")

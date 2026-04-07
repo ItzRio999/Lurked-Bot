@@ -25,7 +25,7 @@ const { assignTimedRole, removeTimedRole, listTimedRoles } = require("../feature
 const { submitVouch, backupVouches, restoreVouches } = require("../features/vouch");
 const { handleSecurityTrapDecision, showSecurityTrapBans } = require("../features/securityTrap");
 const { requestMovie, listMovieRequests } = require("../features/movieRequests");
-const { hasStaffRole, hasVerifiedRole } = require("../utils/permissions");
+const { hasStaffRole, hasVerifiedRole, getVerifiedRoleId } = require("../utils/permissions");
 
 async function handleInteraction(interaction, config, data, configPath, dataPath, io) {
   const verifiedCommandNames = new Set(["help", "userinfo", "invites", "requestmovie", "vouch"]);
@@ -124,16 +124,18 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
     return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 
-  const member = interaction.member;
+  const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => interaction.member);
   const name = interaction.commandName;
 
   if (verifiedCommandNames.has(name) && !hasVerifiedRole(member, config)) {
+    const verifiedRoleId = getVerifiedRoleId(config);
     const embed = addLogo(
       new EmbedBuilder()
         .setDescription("❌ You need the verified member role to use this command.")
         .setColor(0xED4245),
       config
     );
+    embed.setDescription(`âŒ You need the <@&${verifiedRoleId}> role to use this command.`);
     return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 

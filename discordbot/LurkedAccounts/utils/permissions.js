@@ -33,13 +33,21 @@ function hasStaffRole(member, config) {
   return false;
 }
 
+function getVerifiedRoleId(config, fallbackRoleId = "1451251793303703616") {
+  return String(
+    config?.verification?.verified_role_id ||
+    config?.verify_role_id ||
+    fallbackRoleId
+  );
+}
+
 function hasVerifiedRole(member, config, fallbackRoleId = "1451251793303703616") {
   if (!member) return false;
 
-  const verifiedRoleId = config?.verification?.verified_role_id || fallbackRoleId;
+  const verifiedRoleId = getVerifiedRoleId(config, fallbackRoleId);
   if (!verifiedRoleId) return false;
 
-  return member.roles.cache.has(String(verifiedRoleId));
+  return member.roles.cache.has(verifiedRoleId);
 }
 
 function mention(userId) {
@@ -49,6 +57,7 @@ function mention(userId) {
 module.exports = {
   isOwnerOrCoowner,
   hasStaffRole,
+  getVerifiedRoleId,
   hasVerifiedRole,
   mention,
 };

@@ -838,6 +838,12 @@ const commands = [
     .setDescription("Restore vouches from the latest Firebase Firestore backup")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
+  // ============== STICKY MESSAGE ==============
+  new SlashCommandBuilder()
+    .setName("stickymessage")
+    .setDescription("Post or refresh the sticky info embed in bot-cmds channel")
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
 ].map((c) => c.toJSON());
 
 module.exports = commands;

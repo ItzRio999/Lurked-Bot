@@ -27,6 +27,44 @@ const { handleSecurityTrapDecision, showSecurityTrapBans } = require("../feature
 const { requestMovie, listMovieRequests } = require("../features/movieRequests");
 const { hasStaffRole, hasVerifiedRole, getVerifiedRoleId } = require("../utils/permissions");
 
+function buildBotCmdsEmbed(config) {
+  return addLogo(
+    new EmbedBuilder()
+      .setTitle('📋 Available Commands')
+      .setColor(0x5865F2)
+      .setDescription('Here\'s what you can do in this channel. All commands below are for use here only.')
+      .addFields(
+        {
+          name: '⭐ `/vouch`',
+          value: 'Leave a review for our server!\n`/vouch message:<your review> stars:<1-5> proof:<optional image>`',
+          inline: false
+        },
+        {
+          name: '🎬 `/requestmovie`',
+          value: 'Request a movie for movie night!\n`/requestmovie title:<name> year:<year> details:<optional> link:<optional>`',
+          inline: false
+        },
+        {
+          name: '👤 `/userinfo`',
+          value: 'View details about yourself or any member.\n`/userinfo user:<optional>`',
+          inline: false
+        },
+        {
+          name: '📨 `/invites`',
+          value: 'Check your invite stats.\n`/invites user:<optional>`',
+          inline: false
+        },
+        {
+          name: '❓ `/help`',
+          value: 'View all available bot commands.',
+          inline: false
+        }
+      )
+      .setFooter({ text: 'Commands must be used in this channel only' }),
+    config
+  );
+}
+
 async function handleInteraction(interaction, config, data, configPath, dataPath, io) {
   const verifiedCommandNames = new Set(["help", "userinfo", "invites", "vouch"]);
 
@@ -126,6 +164,21 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
 
   const member = interaction.member;
   const name = interaction.commandName;
+
+  // ============== BOT-CMDS CHANNEL RESTRICTION ==============
+  const BOT_CMDS_CHANNEL_ID = '1454672993740521493';
+  // Commands regular users run — must be used in bot-cmds only
+  const publicCommands = new Set(['help', 'userinfo', 'invites', 'vouch', 'requestmovie']);
+  if (publicCommands.has(name) && interaction.channelId !== BOT_CMDS_CHANNEL_ID) {
+    const embed = addLogo(
+      new EmbedBuilder()
+        .setTitle('Wrong Channel')
+        .setDescription(`Please use bot commands in <#${BOT_CMDS_CHANNEL_ID}>!\n\nHead over there and run your command again.`)
+        .setColor(0xED4245),
+      config
+    );
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+  }
 
   if (verifiedCommandNames.has(name) && !hasVerifiedRole(member, config)) {
     const verifiedRoleId = getVerifiedRoleId(config);
@@ -317,6 +370,34 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
 
   if (name === "movierequests") {
     return listMovieRequests(interaction, config, data);
+  }
+
+  // ============== STICKY MESSAGE ==============
+  if (name === "stickymessage") {
+    const { saveJson } = require("../utils/fileManager");
+    const BOT_CMDS_CH = '1454672993740521493';
+    const channel = interaction.guild.channels.cache.get(BOT_CMDS_CH);
+    if (!channel) {
+      return interaction.reply({
+        content: "❌ Could not find the bot-cmds channel.",
+        flags: MessageFlags.Ephemeral
+      });
+    }
+
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+    // Delete old sticky if one was tracked
+    if (data.sticky_message_id) {
+      const old = await channel.messages.fetch(data.sticky_message_id).catch(() => null);
+      if (old) await old.delete().catch(() => {});
+    }
+
+    const stickyEmbed = buildBotCmdsEmbed(config);
+    const sent = await channel.send({ embeds: [stickyEmbed] });
+    data.sticky_message_id = sent.id;
+    saveJson(dataPath, data);
+
+    return interaction.editReply({ content: `✅ Sticky message posted in <#${BOT_CMDS_CH}>!` });
   }
 
   // ============== OWNER/COOWNER COMMANDS ==============

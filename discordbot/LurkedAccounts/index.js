@@ -21,6 +21,10 @@ let securityTrapModule;
 // In-memory invite cache for tracking which invite a new member used
 let inviteCache = new Map();
 
+// Debounce timer for sticky message reposting
+let stickyDebounceTimer = null;
+const BOT_CMDS_CHANNEL_ID = '1454672993740521493';
+
 // Load configuration and data
 const config = loadJson(CONFIG_PATH, null);
 if (!config) {
@@ -431,6 +435,67 @@ client.on("messageCreate", async (message) => {
   }
   const handledBySecurityTrap = await securityTrapModule.handleSecurityTrapMessage(message, config);
   if (handledBySecurityTrap) return;
+
+  // Sticky message: keep the info embed pinned to the bottom of bot-cmds
+  if (message.channel.id === BOT_CMDS_CHANNEL_ID) {
+    if (stickyDebounceTimer) clearTimeout(stickyDebounceTimer);
+    stickyDebounceTimer = setTimeout(async () => {
+      try {
+        const { EmbedBuilder } = require('discord.js');
+        const { addLogo } = require('./utils/fileManager');
+
+        // Delete previous sticky message if tracked
+        if (data.sticky_message_id) {
+          const oldMsg = await message.channel.messages.fetch(data.sticky_message_id).catch(() => null);
+          if (oldMsg) await oldMsg.delete().catch(() => {});
+          data.sticky_message_id = null;
+        }
+
+        // Build and send fresh sticky
+        const embed = addLogo(
+          new EmbedBuilder()
+            .setTitle('📋 Available Commands')
+            .setColor(0x5865F2)
+            .setDescription('Here\'s what you can do in this channel. All commands below are for use here only.')
+            .addFields(
+              {
+                name: '⭐ `/vouch`',
+                value: 'Leave a review for our server!\n`/vouch message:<your review> stars:<1-5> proof:<optional image>`',
+                inline: false
+              },
+              {
+                name: '🎬 `/requestmovie`',
+                value: 'Request a movie for movie night!\n`/requestmovie title:<name> year:<year> details:<optional> link:<optional>`',
+                inline: false
+              },
+              {
+                name: '👤 `/userinfo`',
+                value: 'View details about yourself or any member.\n`/userinfo user:<optional>`',
+                inline: false
+              },
+              {
+                name: '📨 `/invites`',
+                value: 'Check your invite stats.\n`/invites user:<optional>`',
+                inline: false
+              },
+              {
+                name: '❓ `/help`',
+                value: 'View all available bot commands.',
+                inline: false
+              }
+            )
+            .setFooter({ text: 'Commands must be used in this channel only' }),
+          config
+        );
+
+        const sent = await message.channel.send({ embeds: [embed] });
+        data.sticky_message_id = sent.id;
+        saveJson(DATA_PATH, data);
+      } catch (err) {
+        console.error('⚠️ Error updating sticky message:', err);
+      }
+    }, 1500);
+  }
 
   // Lazy load modules on first use
   if (!automodModule) automodModule = require("./features/automod");

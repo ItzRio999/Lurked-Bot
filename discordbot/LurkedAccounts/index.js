@@ -454,37 +454,69 @@ client.on("messageCreate", async (message) => {
         // Build and send fresh sticky
         const embed = addLogo(
           new EmbedBuilder()
-            .setTitle('📋 Available Commands')
+            .setTitle('📋  Bot Commands')
             .setColor(0x5865F2)
-            .setDescription('Here\'s what you can do in this channel. All commands below are for use here only.')
+            .setDescription(
+              'All user commands must be run **in this channel**. Using them elsewhere will redirect you back here.\n\u200b'
+            )
             .addFields(
               {
-                name: '⭐ `/vouch`',
-                value: 'Leave a review for our server!\n`/vouch message:<your review> stars:<1-5> proof:<optional image>`',
+                name: '⭐  /vouch — Submit a Review',
+                value: [
+                  'Leave a public review for our server. Helps the community grow.',
+                  '```',
+                  '/vouch message: stars: proof:',
+                  '```',
+                  '`message` — Your written review *(required)*',
+                  '`stars` — Rating from **1 to 5** *(required)*',
+                  '`proof` — Image or video attachment *(optional)*',
+                  '\u200b',
+                ].join('\n'),
                 inline: false
               },
               {
-                name: '🎬 `/requestmovie`',
-                value: 'Request a movie for movie night!\n`/requestmovie title:<name> year:<year> details:<optional> link:<optional>`',
+                name: '🎬  /requestmovie — Movie Night Requests',
+                value: [
+                  'Submit a film for consideration at our next movie night.',
+                  '```',
+                  '/requestmovie title: year: details: link:',
+                  '```',
+                  '`title` — Movie name *(required)*',
+                  '`year` — Release year *(required)*',
+                  '`details` — Why you want it hosted *(optional)*',
+                  '`link` — IMDb / TMDb / trailer URL *(optional)*',
+                  '\u200b',
+                ].join('\n'),
                 inline: false
               },
               {
-                name: '👤 `/userinfo`',
-                value: 'View details about yourself or any member.\n`/userinfo user:<optional>`',
+                name: '🔗  How to Get a Movie Link',
+                value: [
+                  'Search your movie on **[IMDb](https://www.imdb.com)** or **[TMDb](https://www.themoviedb.org)**, then copy the URL from your browser and paste it into the `link` field.',
+                  '',
+                  '> \u2705  Requests that include a valid link are **significantly more likely to be accepted** \u2014 it helps staff identify the exact film quickly.',
+                  '\u200b',
+                ].join('\n'),
                 inline: false
               },
               {
-                name: '📨 `/invites`',
-                value: 'Check your invite stats.\n`/invites user:<optional>`',
-                inline: false
+                name: '👤  /userinfo',
+                value: '```\n/userinfo user:\n```\nView info about yourself or any member.',
+                inline: true
               },
               {
-                name: '❓ `/help`',
-                value: 'View all available bot commands.',
-                inline: false
+                name: '📨  /invites',
+                value: '```\n/invites user:\n```\nCheck your invite count and stats.',
+                inline: true
+              },
+              {
+                name: '❓  /help',
+                value: '```\n/help\n```\nView all available bot commands.',
+                inline: true
               }
             )
-            .setFooter({ text: 'Commands must be used in this channel only' }),
+            .setFooter({ text: 'Commands are restricted to this channel  \u2022  Last refreshed' })
+            .setTimestamp(),
           config
         );
 

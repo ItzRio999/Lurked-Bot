@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { loadJson, saveJson, DATA_PATH } = require('../utils/fileManager');
+const { saveJson, DATA_PATH } = require('../utils/fileManager');
 const { verifyAuth, verifyAdmin } = require('../middleware/firebaseAuth');
 const admin = require('firebase-admin');
 const { searchMoviePoster } = require('../utils/tmdb');
@@ -300,7 +300,7 @@ router.get('/api/events', async (req, res) => {
     }
 
     // Load runtime data
-    const data = loadJson(DATA_PATH, {});
+    const data = req.app.locals.data;
     ensureEventDataShape(data);
 
     const events = [];
@@ -446,7 +446,7 @@ router.post('/api/events', verifyAuth, verifyAdmin, async (req, res) => {
     }
 
     // Load current data
-    const data = loadJson(DATA_PATH, {});
+    const data = req.app.locals.data;
     ensureEventDataShape(data);
 
     // Fetch movie poster from TMDb (non-blocking - don't fail if it errors)
@@ -555,7 +555,7 @@ router.delete('/api/events/:eventId', verifyAuth, verifyAdmin, async (req, res) 
     }
 
     // Load current data
-    const data = loadJson(DATA_PATH, {});
+    const data = req.app.locals.data;
     ensureEventDataShape(data);
 
     if (!data.movie_schedule || !Array.isArray(data.movie_schedule)) {
@@ -662,7 +662,7 @@ router.patch('/api/events/:eventId/live', verifyAuth, verifyAdmin, async (req, r
     }
 
     // Load current data
-    const data = loadJson(DATA_PATH, {});
+    const data = req.app.locals.data;
 
     let event = null;
     let eventLocation = null;
@@ -781,7 +781,7 @@ router.patch('/api/events/:eventId/live', verifyAuth, verifyAdmin, async (req, r
 // GET /api/movie-requests - Fetch all movie requests for admin review
 router.get('/api/movie-requests', verifyAuth, verifyAdmin, async (req, res) => {
   try {
-    const data = loadJson(DATA_PATH, {});
+    const data = req.app.locals.data;
     ensureEventDataShape(data);
 
     const requests = data.movie_requests
@@ -826,7 +826,7 @@ router.patch('/api/movie-requests/:requestId/review', verifyAuth, verifyAdmin, a
       });
     }
 
-    const data = loadJson(DATA_PATH, {});
+    const data = req.app.locals.data;
     ensureEventDataShape(data);
 
     const requestIndex = data.movie_requests.findIndex((request) => String(request.id) === String(requestId));
@@ -944,6 +944,62 @@ router.patch('/api/movie-requests/:requestId/review', verifyAuth, verifyAdmin, a
     res.status(500).json({
       success: false,
       error: 'Failed to review movie request'
+    });
+  }
+});
+
+// DELETE /api/movie-requests - Clear all movie requests, auto-denying any open ones (Admin only)
+router.delete('/api/movie-requests', verifyAuth, verifyAdmin, async (req, res) => {
+  try {
+    const data = req.app.locals.data;
+    const io = req.app.locals.io;
+
+    ensureEventDataShape(data);
+
+    const now = new Date().toISOString();
+    let autoDeniedCount = 0;
+
+    for (const request of data.movie_requests) {
+      if (request.status === 'open') {
+        request.status = 'denied';
+        request.admin_note = 'Cleared by admin.';
+        request.reviewed_at = now;
+        request.reviewed_by = req.user.uid;
+        request.reviewed_by_email = req.user.email || null;
+        request.decision_dm_sent = false;
+        request.decision_dm_error = 'cleared_by_admin';
+        autoDeniedCount++;
+      }
+    }
+
+    data.movie_requests = [];
+    saveJson(DATA_PATH, data);
+
+    if (io) {
+      io.emit('movieRequestsCleared', { autoDeniedCount });
+    }
+
+    try {
+      await admin.firestore().collection('adminLogs').add({
+        action: 'Cleared movie requests',
+        details: `Cleared all movie requests. ${autoDeniedCount} open request(s) were auto-denied.`,
+        adminEmail: req.user.email || 'Unknown',
+        timestamp: admin.firestore.FieldValue.serverTimestamp()
+      });
+    } catch (logError) {
+      console.error('Failed to log movie requests clear:', logError);
+    }
+
+    res.json({
+      success: true,
+      autoDeniedCount,
+      message: `Cleared all movie requests. ${autoDeniedCount} open request(s) were auto-denied.`
+    });
+  } catch (error) {
+    console.error('❌ Error clearing movie requests:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to clear movie requests'
     });
   }
 });

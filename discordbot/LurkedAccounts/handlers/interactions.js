@@ -310,6 +310,15 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
     return showSecurityTrapBans(interaction, data, config);
   }
 
+  // ============== VERIFIED-ROLE COMMANDS ==============
+  if (name === "requestmovie") {
+    return requestMovie(interaction, config, data, dataPath);
+  }
+
+  if (name === "movierequests") {
+    return listMovieRequests(interaction, config, data);
+  }
+
   // ============== OWNER/COOWNER COMMANDS ==============
   if (!isOwnerOrCoowner(member, config)) {
     const embed = addLogo(
@@ -1486,14 +1495,6 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
 
   if (name === "inviteleaderboard") {
     return showInviteLeaderboard(interaction, data, config);
-  }
-
-  if (name === "requestmovie") {
-    return requestMovie(interaction, config, data, dataPath);
-  }
-
-  if (name === "movierequests") {
-    return listMovieRequests(interaction, config, data);
   }
 
   if (name === "debugroles") {

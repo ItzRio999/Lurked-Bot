@@ -744,6 +744,12 @@ export default function App() {
         }
       });
 
+      socket.on('movieRequestsCleared', () => {
+        if (isActive) {
+          setMovieRequests([]);
+        }
+      });
+
       socket.on('disconnect', () => {
         console.log('❌ Events WebSocket disconnected');
       });
@@ -2259,6 +2265,42 @@ export default function App() {
     }
   };
 
+  const handleClearMovieRequests = async () => {
+    if (!isAdmin || eventUploadBusy || !currentUser) return;
+    if (!window.confirm("Clear all movie requests? Open requests will be auto-denied. This cannot be undone.")) return;
+
+    setEventUploadBusy(true);
+    setEventUploadMessage("");
+
+    try {
+      const idToken = await currentUser.getIdToken();
+      const response = await fetch(`${fileServerUrl || "http://localhost:3002"}/api/movie-requests`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to clear movie requests");
+      }
+
+      setMovieRequests([]);
+      setEventUploadMessageTone("success");
+      setEventUploadMessage(
+        data.autoDeniedCount > 0
+          ? `Cleared all requests. ${data.autoDeniedCount} open request(s) were auto-denied.`
+          : "Cleared all movie requests."
+      );
+    } catch (error) {
+      console.error("Error clearing movie requests:", error);
+      setEventUploadMessageTone("error");
+      setEventUploadMessage(error.message || "Failed to clear movie requests.");
+    } finally {
+      setEventUploadBusy(false);
+    }
+  };
+
   const setEventLiveStatus = async (eventId, eventTitle, isLive, joinUrl) => {
     setEventUploadBusy(true);
     setEventUploadMessage("");
@@ -2676,6 +2718,7 @@ export default function App() {
         onDeleteEvent={handleDeleteEvent}
         onToggleEventLive={handleToggleEventLive}
         onReviewMovieRequest={handleReviewMovieRequest}
+        onClearMovieRequests={handleClearMovieRequests}
         lurkedTweaksInfo={lurkedTweaksInfo}
         lurkedTweaksFile={lurkedTweaksFile}
         lurkedTweaksBusy={lurkedTweaksBusy}

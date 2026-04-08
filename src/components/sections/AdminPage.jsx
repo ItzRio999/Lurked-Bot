@@ -48,6 +48,7 @@ export default function AdminPage({
   onDeleteEvent,
   onToggleEventLive,
   onReviewMovieRequest,
+  onClearMovieRequests,
   lurkedTweaksInfo,
   lurkedTweaksFile,
   lurkedTweaksBusy,
@@ -1133,8 +1134,20 @@ export default function AdminPage({
                       className="text-cyan-400"
                     ></iconify-icon>
                     Movie Requests
-                    <span className="ml-auto text-xs text-slate-500">
-                      {movieRequests?.filter((request) => request.status === "open").length || 0} open
+                    <span className="ml-auto flex items-center gap-3">
+                      <span className="text-xs text-slate-500">
+                        {movieRequests?.filter((request) => request.status === "open").length || 0} open
+                      </span>
+                      {movieRequests?.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={onClearMovieRequests}
+                          disabled={eventUploadBusy}
+                          className="rounded-md border border-rose-500/20 bg-rose-500/10 px-2 py-0.5 text-[10px] font-medium text-rose-300 hover:bg-rose-500/20 disabled:opacity-50"
+                        >
+                          Clear All
+                        </button>
+                      )}
                     </span>
                   </h3>
 

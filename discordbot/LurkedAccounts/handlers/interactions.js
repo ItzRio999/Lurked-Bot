@@ -201,7 +201,9 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
   const BOT_CMDS_CHANNEL_ID = '1454672993740521493';
   // Commands regular users run — must be used in bot-cmds only
   const publicCommands = new Set(['help', 'userinfo', 'invites', 'vouch', 'requestmovie']);
-  if (publicCommands.has(name) && interaction.channelId !== BOT_CMDS_CHANNEL_ID) {
+  const BYPASS_CHANNEL_ROLES = new Set(['1490797379455291412', '1451251793303703620', '1451251793303703619']);
+  const hasBypassRole = member.roles.cache.some(r => BYPASS_CHANNEL_ROLES.has(r.id));
+  if (publicCommands.has(name) && interaction.channelId !== BOT_CMDS_CHANNEL_ID && !hasBypassRole) {
     const embed = addLogo(
       new EmbedBuilder()
         .setTitle('Wrong Channel')
@@ -430,6 +432,155 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
     saveJson(dataPath, data);
 
     return interaction.editReply({ content: `✅ Sticky message posted in <#${BOT_CMDS_CH}>!` });
+  }
+
+  // ============== PUBLIC / VERIFIED COMMANDS (must be before owner gate) ==============
+  if (name === "help") {
+    const embed = new EmbedBuilder()
+      .setTitle("Lurked Accounts Bot")
+      .setDescription("Complete server management with tickets, verification, moderation, security, and more.")
+      .setColor(0x522081)
+      .addFields(
+        {
+          name: "🎫 Support Tickets",
+          value:
+            "`/ticketpanel` - Post ticket panel\n" +
+            "`/ticketsetup` - Configure system\n" +
+            "`/ticketpriority` - Set priority\n" +
+            "`/ticketnote` `/ticketnotes` - Staff notes\n" +
+            "`/ticketadd` `/ticketremove` - Manage users\n" +
+            "`/ticketstats` - View statistics",
+          inline: true
+        },
+        {
+          name: "✅ Verification",
+          value:
+            "`/verifyembed` - Post verify panel\n" +
+            "`/verify user` - Manual verify\n" +
+            "`/verify unverify` - Remove verify\n" +
+            "`/verify stats` - View stats\n" +
+            "`/verify config` - Settings\n" +
+            "**Method:** Math CAPTCHA",
+          inline: true
+        },
+        {
+          name: "🛡️ Moderation",
+          value:
+            "`/nuke` - Bulk delete\n" +
+            "`/timeout` `/untimeout` - Mute\n" +
+            "`/kick` `/ban` `/unban`\n" +
+            "`/softban` - Kick + delete\n" +
+            "`/userinfo` - User info",
+          inline: true
+        },
+        {
+          name: "🤖 Auto-Moderation",
+          value:
+            "`/automod enable/disable`\n" +
+            "`/automod status` - View config\n" +
+            "`/automod spam/links/badwords`\n" +
+            "`/automod immune` - Exempt roles\n" +
+            "**Action:** Auto-delete",
+          inline: true
+        },
+        {
+          name: "🎁 Giveaways",
+          value:
+            "`/giveaway start` - Create\n" +
+            "`/giveaway end` - End early\n" +
+            "`/giveaway reroll` - New winner\n" +
+            "`/giveaway list` - View active",
+          inline: true
+        },
+        {
+          name: "🎭 Roles Panel",
+          value:
+            "`/rolespanel configure` - Setup\n" +
+            "`/rolespanel post` - Post panel\n" +
+            "`/rolespanel customize` - Style",
+          inline: true
+        },
+        {
+          name: "📊 Polls & Welcome",
+          value:
+            "`/poll` - Create poll\n" +
+            "`/setwelcome` `/setleave`\n" +
+            "`/disablewelcome` `/disableleave`",
+          inline: true
+        },
+        {
+          name: "📝 Embed Creator",
+          value:
+            "`/embed create` - Basic embed\n" +
+            "`/embed advanced` - With fields\n" +
+            "**Features:** Color, footer, images",
+          inline: true
+        },
+        {
+          name: "📋 Audit Logging",
+          value:
+            "`/setlogchannel` - Set log channel\n" +
+            "`/logs view` - View log settings\n" +
+            "`/logs config` - Configure logs\n" +
+            "`/disablelogs` - Disable logging",
+          inline: true
+        },
+        {
+          name: "📨 Invite Tracking",
+          value:
+            "`/invites` - Your invite stats\n" +
+            "`/invites @user` - User's stats\n" +
+            "`/inviteleaderboard` - Top inviters",
+          inline: true
+        },
+        {
+          name: "⏰ Timed Roles",
+          value:
+            "`/timedrole` - Assign temp role\n" +
+            "`/timedrolelist` - View active\n" +
+            "`/timedroleremove` - Remove early",
+          inline: true
+        },
+        {
+          name: "⚙️ Configuration",
+          value:
+            "`/quicksetup tickets` - Fast setup\n" +
+            "`/verifylog set` - Verify logs\n" +
+            "`/security setchannel` - Security logs",
+          inline: true
+        }
+      )
+      .addFields({
+        name: "🚨 Security Trap",
+        value:
+          "`/security dashboard` - Security overview\n" +
+          "`/security logs` - Recent events\n" +
+          "`/viewbans` - Trap ban history\n" +
+          "`/viewbans user:@user` - Filter one user\n" +
+          "**Catches:** `@everyone` abuse, compromised accounts",
+        inline: true
+      })
+      .setFooter({ text: "Use /quicksetup for fast configuration | Admin commands require permissions" })
+      .setTimestamp();
+
+    if (config.logo_url) embed.setThumbnail(config.logo_url);
+
+    return interaction.reply({ embeds: [embed] });
+  }
+
+  if (name === "invites") {
+    const targetUser = interaction.options.getUser("user");
+    // Anyone can check their own invites; staff required for checking others
+    if (targetUser && targetUser.id !== interaction.user.id && !hasStaffRole(member, config) && !isOwnerOrCoowner(member, config)) {
+      const embed = addLogo(
+        new EmbedBuilder()
+          .setDescription("❌ You can only check your own invite stats. Staff can check other users.")
+          .setColor(0xED4245),
+        config
+      );
+      return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+    }
+    return showInviteStats(interaction, data, config);
   }
 
   // ============== OWNER/COOWNER COMMANDS ==============
@@ -823,140 +974,6 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
     if (subcommand === "list") {
       return listGiveaways(interaction, data);
     }
-  }
-
-  // Help Command
-  if (name === "help") {
-    const embed = new EmbedBuilder()
-      .setTitle("Lurked Accounts Bot")
-      .setDescription("Complete server management with tickets, verification, moderation, security, and more.")
-      .setColor(0x522081)
-      .addFields(
-        {
-          name: "🎫 Support Tickets",
-          value:
-            "`/ticketpanel` - Post ticket panel\n" +
-            "`/ticketsetup` - Configure system\n" +
-            "`/ticketpriority` - Set priority\n" +
-            "`/ticketnote` `/ticketnotes` - Staff notes\n" +
-            "`/ticketadd` `/ticketremove` - Manage users\n" +
-            "`/ticketstats` - View statistics",
-          inline: true
-        },
-        {
-          name: "✅ Verification",
-          value:
-            "`/verifyembed` - Post verify panel\n" +
-            "`/verify user` - Manual verify\n" +
-            "`/verify unverify` - Remove verify\n" +
-            "`/verify stats` - View stats\n" +
-            "`/verify config` - Settings\n" +
-            "**Method:** Math CAPTCHA",
-          inline: true
-        },
-        {
-          name: "🛡️ Moderation",
-          value:
-            "`/nuke` - Bulk delete\n" +
-            "`/timeout` `/untimeout` - Mute\n" +
-            "`/kick` `/ban` `/unban`\n" +
-            "`/softban` - Kick + delete\n" +
-            "`/userinfo` - User info",
-          inline: true
-        },
-        {
-          name: "🤖 Auto-Moderation",
-          value:
-            "`/automod enable/disable`\n" +
-            "`/automod status` - View config\n" +
-            "`/automod spam/links/badwords`\n" +
-            "`/automod immune` - Exempt roles\n" +
-            "**Action:** Auto-delete",
-          inline: true
-        },
-        {
-          name: "🎁 Giveaways",
-          value:
-            "`/giveaway start` - Create\n" +
-            "`/giveaway end` - End early\n" +
-            "`/giveaway reroll` - New winner\n" +
-            "`/giveaway list` - View active",
-          inline: true
-        },
-        {
-          name: "🎭 Roles Panel",
-          value:
-            "`/rolespanel configure` - Setup\n" +
-            "`/rolespanel post` - Post panel\n" +
-            "`/rolespanel customize` - Style",
-          inline: true
-        },
-        {
-          name: "📊 Polls & Welcome",
-          value:
-            "`/poll` - Create poll\n" +
-            "`/setwelcome` `/setleave`\n" +
-            "`/disablewelcome` `/disableleave`",
-          inline: true
-        },
-        {
-          name: "📝 Embed Creator",
-          value:
-            "`/embed create` - Basic embed\n" +
-            "`/embed advanced` - With fields\n" +
-            "**Features:** Color, footer, images",
-          inline: true
-        },
-        {
-          name: "📋 Audit Logging",
-          value:
-            "`/setlogchannel` - Set log channel\n" +
-            "`/logs view` - View log settings\n" +
-            "`/logs config` - Configure logs\n" +
-            "`/disablelogs` - Disable logging",
-          inline: true
-        },
-        {
-          name: "📨 Invite Tracking",
-          value:
-            "`/invites` - Your invite stats\n" +
-            "`/invites @user` - User's stats\n" +
-            "`/inviteleaderboard` - Top inviters",
-          inline: true
-        },
-        {
-          name: "⏰ Timed Roles",
-          value:
-            "`/timedrole` - Assign temp role\n" +
-            "`/timedrolelist` - View active\n" +
-            "`/timedroleremove` - Remove early",
-          inline: true
-        },
-        {
-          name: "⚙️ Configuration",
-          value:
-            "`/quicksetup tickets` - Fast setup\n" +
-            "`/verifylog set` - Verify logs\n" +
-            "`/security setchannel` - Security logs",
-          inline: true
-        }
-      )
-      .addFields({
-        name: "🚨 Security Trap",
-        value:
-          "`/security dashboard` - Security overview\n" +
-          "`/security logs` - Recent events\n" +
-          "`/viewbans` - Trap ban history\n" +
-          "`/viewbans user:@user` - Filter one user\n" +
-          "**Catches:** `@everyone` abuse, compromised accounts",
-        inline: true
-      })
-      .setFooter({ text: "Use /quicksetup for fast configuration | Admin commands require permissions" })
-      .setTimestamp();
-
-    if (config.logo_url) embed.setThumbnail(config.logo_url);
-
-    return interaction.reply({ embeds: [embed] });
   }
 
   // Moderation
@@ -1588,22 +1605,6 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
     if (subcommand === "advanced") {
       return showAdvancedEmbedModal(interaction);
     }
-  }
-
-  // ============== INVITE TRACKING ==============
-  if (name === "invites") {
-    const targetUser = interaction.options.getUser("user");
-    // Anyone can check their own invites; staff required for checking others
-    if (targetUser && targetUser.id !== interaction.user.id && !hasStaffRole(member, config) && !isOwnerOrCoowner(member, config)) {
-      const embed = addLogo(
-        new EmbedBuilder()
-          .setDescription("❌ You can only check your own invite stats. Staff can check other users.")
-          .setColor(0xED4245),
-        config
-      );
-      return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
-    }
-    return showInviteStats(interaction, data, config);
   }
 
   if (name === "inviteleaderboard") {

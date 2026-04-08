@@ -468,7 +468,8 @@ const commands = [
         .setDescription("Duration in minutes (default: 60)")
         .setMinValue(1)
         .setMaxValue(10080)
-    ),
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageEvents),
 
   // ============== WELCOME/LEAVE MESSAGES ==============
   new SlashCommandBuilder()

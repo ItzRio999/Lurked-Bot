@@ -676,6 +676,46 @@ client.on("inviteDelete", async (invite) => {
 client.on("interactionCreate", async (interaction) => {
   try {
     await handleInteraction(interaction, config, data, CONFIG_PATH, DATA_PATH, interaction.client.io);
+
+    // Sticky message: repost after slash commands in bot-cmds channel
+    if (interaction.isChatInputCommand() && interaction.channelId === BOT_CMDS_CHANNEL_ID) {
+      if (stickyDebounceTimer) clearTimeout(stickyDebounceTimer);
+      stickyDebounceTimer = setTimeout(async () => {
+        try {
+          const channel = interaction.channel || await interaction.client.channels.fetch(BOT_CMDS_CHANNEL_ID).catch(() => null);
+          if (!channel) return;
+          const { EmbedBuilder } = require('discord.js');
+          const { addLogo } = require('./utils/fileManager');
+          if (data.sticky_message_id) {
+            const oldMsg = await channel.messages.fetch(data.sticky_message_id).catch(() => null);
+            if (oldMsg) await oldMsg.delete().catch(() => {});
+            data.sticky_message_id = null;
+          }
+          const embed = addLogo(
+            new EmbedBuilder()
+              .setTitle('📋  Bot Commands')
+              .setColor(0x5865F2)
+              .setDescription('All user commands must be run **in this channel**. Using them elsewhere will redirect you back here.\n\u200b')
+              .addFields(
+                { name: '⭐  /vouch — Submit a Review', value: ['Leave a public review for our server. Helps the community grow.', '```', '/vouch message: stars: proof:', '```', '`message` — Your written review *(required)*', '`stars` — Rating from **1 to 5** *(required)*', '`proof` — Image or video attachment *(optional)*', '\u200b'].join('\n'), inline: false },
+                { name: '🎬  /requestmovie — Movie Night Requests', value: ['Submit a film for consideration at our next movie night.', '```', '/requestmovie title: year: details: link:', '```', '`title` — Movie name *(required)*', '`year` — Release year *(required)*', '`details` — Why you want it hosted *(optional)*', '`link` — IMDb / TMDb / trailer URL *(optional)*', '\u200b'].join('\n'), inline: false },
+                { name: '🔗  How to Get a Movie Link', value: ['Search your movie on **[IMDb](https://www.imdb.com)** or **[TMDb](https://www.themoviedb.org)**, then copy the URL from your browser and paste it into the `link` field.', '', '> \u2705  Requests that include a valid link are **significantly more likely to be accepted** \u2014 it helps staff identify the exact film quickly.', '\u200b'].join('\n'), inline: false },
+                { name: '👤  /userinfo', value: '```\n/userinfo user:\n```\nView info about yourself or any member.', inline: true },
+                { name: '📨  /invites', value: '```\n/invites user:\n```\nCheck your invite count and stats.', inline: true },
+                { name: '❓  /help', value: '```\n/help\n```\nView all available bot commands.', inline: true }
+              )
+              .setFooter({ text: 'Commands are restricted to this channel  \u2022  Last refreshed' })
+              .setTimestamp(),
+            config
+          );
+          const sent = await channel.send({ embeds: [embed] });
+          data.sticky_message_id = sent.id;
+          saveJson(DATA_PATH, data);
+        } catch (err) {
+          console.error('⚠️ Error updating sticky message after interaction:', err);
+        }
+      }, 1500);
+    }
   } catch (error) {
     console.error("Error handling interaction:", error);
     const msg = { content: "❌ An error occurred while processing your command.", flags: MessageFlags.Ephemeral };

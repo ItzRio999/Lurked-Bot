@@ -694,6 +694,23 @@ const commands = [
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
 
+  new SlashCommandBuilder()
+    .setName("websiteembed")
+    .setDescription("Post the fixed LurkedAccounts website embed to the website channel")
+    .addStringOption(opt =>
+      opt
+        .setName("image1")
+        .setDescription("Primary image URL for the embed (optional)")
+        .setRequired(false)
+    )
+    .addStringOption(opt =>
+      opt
+        .setName("image2")
+        .setDescription("Secondary image URL shown as thumbnail (optional)")
+        .setRequired(false)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
+
   // ============== INVITE TRACKING ==============
   new SlashCommandBuilder()
     .setName("invites")

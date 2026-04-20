@@ -196,6 +196,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
 
   const member = interaction.member;
   const name = interaction.commandName;
+  const WEBSITE_CHANNEL_ID = "1461278904886235166";
 
   // ============== BOT-CMDS CHANNEL RESTRICTION ==============
   const BOT_CMDS_CHANNEL_ID = '1454672993740521493';
@@ -1605,6 +1606,119 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
     if (subcommand === "advanced") {
       return showAdvancedEmbedModal(interaction);
     }
+  }
+
+  // ============== WEBSITE EMBED ==============
+  if (name === "websiteembed") {
+    const canPostWebsiteEmbed =
+      isOwnerOrCoowner(member, config) ||
+      hasStaffRole(member, config) ||
+      member.permissions.has(PermissionFlagsBits.ManageMessages) ||
+      member.permissions.has(PermissionFlagsBits.Administrator);
+
+    if (!canPostWebsiteEmbed) {
+      const denyEmbed = addLogo(
+        new EmbedBuilder()
+          .setDescription("❌ You need Manage Messages (or staff/owner access) to use this command.")
+          .setColor(0xED4245),
+        config
+      );
+      return interaction.reply({ embeds: [denyEmbed], flags: MessageFlags.Ephemeral });
+    }
+
+    const image1 = interaction.options.getString("image1");
+    const image2 = interaction.options.getString("image2");
+
+    const parseOptionalImageUrl = (value) => {
+      if (!value) return null;
+      try {
+        const parsed = new URL(value.trim());
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+          return null;
+        }
+        return parsed.toString();
+      } catch {
+        return null;
+      }
+    };
+
+    const primaryImageUrl = parseOptionalImageUrl(image1);
+    const secondaryImageUrl = parseOptionalImageUrl(image2);
+
+    if ((image1 && !primaryImageUrl) || (image2 && !secondaryImageUrl)) {
+      const invalidEmbed = addLogo(
+        new EmbedBuilder()
+          .setDescription("❌ One or more image URLs are invalid. Please use full `https://` links.")
+          .setColor(0xED4245),
+        config
+      );
+      return interaction.reply({ embeds: [invalidEmbed], flags: MessageFlags.Ephemeral });
+    }
+
+    const websiteChannel = await interaction.guild.channels
+      .fetch(WEBSITE_CHANNEL_ID)
+      .catch(() => null);
+
+    if (!websiteChannel || !websiteChannel.isTextBased()) {
+      const channelErrorEmbed = addLogo(
+        new EmbedBuilder()
+          .setDescription(`❌ I could not access the website channel (<#${WEBSITE_CHANNEL_ID}>).`)
+          .setColor(0xED4245),
+        config
+      );
+      return interaction.reply({ embeds: [channelErrorEmbed], flags: MessageFlags.Ephemeral });
+    }
+
+    const unixNow = Math.floor(Date.now() / 1000);
+    const websiteEmbed = new EmbedBuilder()
+      .setTitle("LurkedAccounts")
+      .setColor(0x522081)
+      .setDescription(
+        [
+          "Welcome to **LurkedAccounts**. We aim to provide as many services as possible for *completely free*, and we do this on our website.",
+          "",
+          "**To get started:** press our website link below, sign up, and link your Discord account.",
+          "That gives you access to drops and our events like movie nights, game nights, and more, all free.",
+          "",
+          "🌐 **Website:** [Click Here](https://lurkedaccounts.tech/)",
+          "📋 **Click to copy:** `https://lurkedaccounts.tech/`",
+          "",
+          "Enjoy the forums, and make a ticket if you have any questions.",
+          "",
+          "🛡️ **LurkedAccounts does NOT log any information.**",
+        ].join("\n")
+      )
+      .addFields(
+        {
+          name: "Published",
+          value: `<t:${unixNow}:F>\n<t:${unixNow}:R>`,
+          inline: true,
+        },
+        {
+          name: "Quick Copy",
+          value: "```https://lurkedaccounts.tech/```",
+          inline: true,
+        }
+      )
+      .setFooter({ text: "LurkedAccounts • Free services for the community" })
+      .setTimestamp();
+
+    if (primaryImageUrl) {
+      websiteEmbed.setImage(primaryImageUrl);
+    }
+    if (secondaryImageUrl) {
+      websiteEmbed.setThumbnail(secondaryImageUrl);
+    }
+
+    await websiteChannel.send({ embeds: [websiteEmbed] });
+
+    const successEmbed = addLogo(
+      new EmbedBuilder()
+        .setDescription(`✅ Website embed posted in <#${WEBSITE_CHANNEL_ID}>.`)
+        .setColor(0x57F287),
+      config
+    );
+    return interaction.reply({ embeds: [successEmbed], flags: MessageFlags.Ephemeral });
   }
 
   if (name === "inviteleaderboard") {

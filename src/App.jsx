@@ -483,7 +483,7 @@ export default function App() {
         setDrops([]);
         setDropsError("");
         setDropsLoading(false);
-        return;
+        return false;
       }
       setDropsLoading(true);
       setDropsError("");
@@ -513,11 +513,13 @@ export default function App() {
             setDrops(items);
           }
         }
+        return true;
       } catch (error) {
         console.error('Error loading drops:', error);
         if (isActive) {
           setDropsError("Unable to load drops right now.");
         }
+        return false;
       } finally {
         if (isActive) {
           setDropsLoading(false);
@@ -530,7 +532,11 @@ export default function App() {
       if (!isVerified) return;
 
       const fileServerUrl = import.meta.env.VITE_FILE_SERVER_URL || 'http://localhost:3002';
-      socket = io(fileServerUrl);
+      socket = io(fileServerUrl, {
+        reconnectionAttempts: 3,
+        reconnectionDelay: 2000,
+        timeout: 5000,
+      });
 
       socket.on('connect', () => {
         console.log('✅ WebSocket connected');
@@ -576,8 +582,8 @@ export default function App() {
     };
 
     // Load initial drops then set up WebSocket
-    loadDrops().then(() => {
-      if (isActive) {
+    loadDrops().then((loaded) => {
+      if (isActive && loaded) {
         initializeWebSocket();
       }
     });
@@ -640,11 +646,13 @@ export default function App() {
         if (data.success && isActive) {
           setEvents(data.events);
         }
+        return true;
       } catch (error) {
         console.error('Error loading events:', error);
         if (isActive) {
           setEventsError("Unable to load events right now.");
         }
+        return false;
       } finally {
         if (isActive) {
           setEventsLoading(false);
@@ -655,7 +663,11 @@ export default function App() {
     // Initialize WebSocket connection for real-time event updates
     const initializeWebSocket = () => {
       const fileServerUrl = import.meta.env.VITE_FILE_SERVER_URL || 'http://localhost:3002';
-      socket = io(fileServerUrl);
+      socket = io(fileServerUrl, {
+        reconnectionAttempts: 3,
+        reconnectionDelay: 2000,
+        timeout: 5000,
+      });
 
       socket.on('connect', () => {
         console.log('✅ Events WebSocket connected');
@@ -760,8 +772,8 @@ export default function App() {
     };
 
     // Load initial events then set up WebSocket
-    loadEvents().then(() => {
-      if (isActive) {
+    loadEvents().then((loaded) => {
+      if (isActive && loaded) {
         initializeWebSocket();
       }
     });
@@ -1629,7 +1641,9 @@ export default function App() {
       }
     } catch (error) {
       console.error("Failed to initiate Discord linking:", error);
-      setProfileMessage("Failed to connect to Discord. Please try again.");
+      setProfileMessage(
+        "Discord linking is unavailable because the API server is not responding right now."
+      );
     } finally {
       setDiscordLinking(false);
     }

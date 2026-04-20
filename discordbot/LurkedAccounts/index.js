@@ -271,6 +271,11 @@ client.on("clientReady", async () => {
   app.use('/api', vouchesAPI);
   console.log('✅ Vouches API routes loaded');
 
+  // Load Auth API routes
+  const authAPI = require('./api/authAPI');
+  app.use('/api', authAPI);
+  console.log('Auth API routes loaded');
+
   // Log all registered routes for debugging
   console.log('\n📍 Registered API routes:');
   if (app._router && app._router.stack) {

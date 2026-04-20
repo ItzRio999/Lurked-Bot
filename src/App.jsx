@@ -39,6 +39,7 @@ import {
   toFriendlyAuthError,
 } from "./utils/auth";
 import { detectDeviceProfile } from "./utils/deviceProfile";
+import { runRecaptchaCheck } from "./utils/recaptcha";
 import { getNextOrderIndex, recalculateOrderIndexes, sortThreadsByPinnedAndOrder } from "./utils/threadOrdering";
 import BackgroundGlow from "./components/layout/BackgroundGlow";
 import Footer from "./components/layout/Footer";
@@ -1497,6 +1498,10 @@ export default function App() {
     }
     setAuthBusy(true);
     try {
+      const recaptchaAction =
+        authMode === "signup" ? "auth_signup" : "auth_signin";
+      await runRecaptchaCheck(recaptchaAction);
+
       if (authMode === "signup") {
         await createUserWithEmailAndPassword(
           auth,

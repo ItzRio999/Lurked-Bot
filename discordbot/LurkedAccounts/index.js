@@ -266,6 +266,11 @@ client.on("clientReady", async () => {
   app.use('/api', giveawaysAPI);
   console.log('✅ Giveaways API routes loaded');
 
+  // Load Forums API routes
+  const forumsAPI = require('./api/forumsAPI');
+  app.use('/api', forumsAPI);
+  console.log('✅ Forums API routes loaded');
+
   // Load Vouches API routes
   const vouchesAPI = require('./api/vouchesAPI');
   app.use('/api', vouchesAPI);

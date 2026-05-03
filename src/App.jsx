@@ -10,27 +10,20 @@ import {
   updateProfile,
 } from "firebase/auth";
 import {
-  addDoc,
-  arrayRemove,
-  arrayUnion,
   collection,
   doc,
-  deleteDoc,
   getDoc,
   getDocs,
-  increment,
   limit,
   onSnapshot,
   orderBy,
   query,
-  serverTimestamp,
   setDoc,
-  updateDoc,
-  writeBatch,
 } from "firebase/firestore";
 import { auth, db } from "./lib/firebase";
 import { adminEmails as defaultAdminEmails, forumCategories, navItems, pageLabels } from "./data/appData";
 import { authButtonClass, authPrimaryButtonClass } from "./styles/buttonClasses";
+import { protectedFetch } from "./utils/apiClient";
 import {
   isEmailValid,
   MAX_PASSWORD_LENGTH,
@@ -233,10 +226,6 @@ export default function App() {
           if (Array.isArray(data.emails) && data.emails.length > 0) {
             setAdminEmails(data.emails.map((e) => e.toLowerCase()));
           }
-        } else {
-          await setDoc(doc(db, "settings", "admins"), {
-            emails: defaultAdminEmails,
-          });
         }
       } catch (error) {
         console.error("Failed to fetch admin emails:", error);
@@ -876,20 +865,10 @@ export default function App() {
         );
 
         if (threadsNeedingMigration.length > 0) {
-          // Batch update threads with missing orderIndex
-          const batch = writeBatch(db);
           threadsNeedingMigration.forEach((thread, index) => {
-            const orderIndex = thread.createdAt
+            thread.orderIndex = thread.createdAt
               ? thread.createdAt.getTime()
               : Date.now() + index;
-            batch.update(doc(db, "threads", thread.id), { orderIndex });
-            // Update local copy
-            thread.orderIndex = orderIndex;
-          });
-
-          // Fire and forget - don't block UI
-          batch.commit().catch((error) => {
-            console.error("Failed to migrate thread orderIndex:", error);
           });
         }
 
@@ -1075,12 +1054,16 @@ export default function App() {
 
   const logAdminAction = async (action, details) => {
     try {
-      await addDoc(collection(db, "adminLogs"), {
-        action,
-        details,
-        adminEmail: currentUser?.email || "Unknown",
-        timestamp: serverTimestamp(),
-      });
+      const fileServerUrl = import.meta.env.VITE_FILE_SERVER_URL || "http://localhost:3002";
+      await protectedFetch(
+        `${fileServerUrl}/api/admin/logs`,
+        {
+          method: "POST",
+          body: JSON.stringify({ action, details }),
+        },
+        currentUser,
+        true
+      );
     } catch (error) {
       console.error("Failed to log admin action:", error);
     }
@@ -1116,17 +1099,26 @@ export default function App() {
       currentUser.email?.split("@")[0] ||
       "Member";
     try {
-      await addDoc(collection(db, "threads"), {
-        title: trimmedTitle,
-        body: trimmedBody,
-        category: threadCategory,
-        replyCount: 0,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        authorId: currentUser.uid,
-        authorName,
-        orderIndex: getNextOrderIndex(threads),
-      });
+      const fileServerUrl = import.meta.env.VITE_FILE_SERVER_URL || "http://localhost:3002";
+      const response = await protectedFetch(
+        `${fileServerUrl}/api/forums/threads`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            title: trimmedTitle,
+            body: trimmedBody,
+            category: threadCategory,
+            orderIndex: getNextOrderIndex(threads),
+            authorName,
+          }),
+        },
+        currentUser,
+        true
+      );
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || "Unable to post thread right now.");
+      }
       setThreadTitle("");
       setThreadBody("");
       setThreadCategory(forumCategories[0]?.label || "General");
@@ -1164,24 +1156,25 @@ export default function App() {
       currentUser.email?.split("@")[0] ||
       "Member";
     try {
-      const replyData = {
-        body: trimmedReply,
-        createdAt: serverTimestamp(),
-        authorId: currentUser.uid,
-        authorName,
-      };
-
-      // Add reply-to data if replying to another message
-      if (replyingToId && replyingToAuthor) {
-        replyData.replyToId = replyingToId;
-        replyData.replyToAuthor = replyingToAuthor;
+      const fileServerUrl = import.meta.env.VITE_FILE_SERVER_URL || "http://localhost:3002";
+      const response = await protectedFetch(
+        `${fileServerUrl}/api/forums/threads/${activeThreadId}/replies`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            body: trimmedReply,
+            authorName,
+            replyToId: replyingToId,
+            replyToAuthor: replyingToAuthor,
+          }),
+        },
+        currentUser,
+        true
+      );
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || "Unable to post reply right now.");
       }
-
-      await addDoc(collection(db, "threads", activeThreadId, "replies"), replyData);
-      await updateDoc(doc(db, "threads", activeThreadId), {
-        replyCount: increment(1),
-        updatedAt: serverTimestamp(),
-      });
       setReplyDraft("");
       setReplyingToId(null);
       setReplyingToAuthor(null);
@@ -1213,23 +1206,18 @@ export default function App() {
   };
 
   const deleteThreadWithReplies = async (threadId) => {
-    const repliesRef = collection(db, "threads", threadId, "replies");
-    const snapshot = await getDocs(repliesRef);
-    let batch = writeBatch(db);
-    let operationCount = 0;
-    for (const replyDoc of snapshot.docs) {
-      batch.delete(replyDoc.ref);
-      operationCount += 1;
-      if (operationCount >= 450) {
-        await batch.commit();
-        batch = writeBatch(db);
-        operationCount = 0;
-      }
+    const fileServerUrl = import.meta.env.VITE_FILE_SERVER_URL || "http://localhost:3002";
+    const response = await protectedFetch(
+      `${fileServerUrl}/api/forums/threads/${threadId}`,
+      {
+        method: "DELETE",
+      },
+      currentUser
+    );
+    const payload = await response.json();
+    if (!response.ok || !payload.success) {
+      throw new Error(payload.error || "Unable to delete thread right now.");
     }
-    if (operationCount > 0) {
-      await batch.commit();
-    }
-    await deleteDoc(doc(db, "threads", threadId));
   };
 
   const handleThreadPinToggle = async (event, thread) => {
@@ -1240,17 +1228,23 @@ export default function App() {
     setThreadAdminBusyId(thread.id);
     setForumAdminMessage("");
     try {
-      await updateDoc(doc(db, "threads", thread.id), {
-        pinned: !thread.pinned,
-        updatedAt: serverTimestamp(),
-      });
+      const fileServerUrl = import.meta.env.VITE_FILE_SERVER_URL || "http://localhost:3002";
+      const response = await protectedFetch(
+        `${fileServerUrl}/api/forums/threads/${thread.id}/pin`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ pinned: !thread.pinned }),
+        },
+        currentUser,
+        true
+      );
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || "Unable to update thread right now.");
+      }
       setForumAdminTone("success");
       setForumAdminMessage(
         thread.pinned ? "Thread unpinned." : "Thread pinned."
-      );
-      await logAdminAction(
-        thread.pinned ? "Unpinned thread" : "Pinned thread",
-        thread.title
       );
     } catch (error) {
       setForumAdminTone("error");
@@ -1301,14 +1295,20 @@ export default function App() {
     setReplyAdminBusyId(replyId);
     setReplyMessage("");
     try {
-      await deleteDoc(doc(db, "threads", activeThreadId, "replies", replyId));
-      await updateDoc(doc(db, "threads", activeThreadId), {
-        replyCount: increment(-1),
-        updatedAt: serverTimestamp(),
-      });
+      const fileServerUrl = import.meta.env.VITE_FILE_SERVER_URL || "http://localhost:3002";
+      const response = await protectedFetch(
+        `${fileServerUrl}/api/forums/threads/${activeThreadId}/replies/${replyId}`,
+        {
+          method: "DELETE",
+        },
+        currentUser
+      );
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || "Unable to delete reply right now.");
+      }
       setReplyMessageTone("success");
       setReplyMessage("Reply deleted.");
-      await logAdminAction("Deleted reply", `Reply ID: ${replyId}`);
     } catch (error) {
       setReplyMessageTone("error");
       setReplyMessage("Unable to delete reply right now.");
@@ -1333,30 +1333,35 @@ export default function App() {
     // Update UI immediately for smooth experience
     setThreads(reorderedThreads);
 
-    // Prepare batch write to Firebase
     try {
-      const batch = writeBatch(db);
-
-      // Only update threads whose orderIndex changed
-      reorderedThreads.forEach((thread, index) => {
+      const fileServerUrl = import.meta.env.VITE_FILE_SERVER_URL || "http://localhost:3002";
+      const changedThreads = reorderedThreads.filter((thread, index) => {
         const originalThread = currentThreads[index];
-        if (
+        return (
           !originalThread ||
           originalThread.id !== thread.id ||
           originalThread.orderIndex !== thread.orderIndex
-        ) {
-          batch.update(doc(db, "threads", thread.id), {
-            orderIndex: thread.orderIndex,
-            updatedAt: serverTimestamp(),
-          });
-        }
+        );
       });
-
-      await batch.commit();
-
-      // Log the reorder action
-      const movedThread = reorderedThreads[newIndex];
-      await logAdminAction("Reordered thread", movedThread.title);
+      const response = await protectedFetch(
+        `${fileServerUrl}/api/forums/threads/reorder`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            threads: changedThreads.map((thread) => ({
+              id: thread.id,
+              orderIndex: thread.orderIndex,
+              title: thread.title,
+            })),
+          }),
+        },
+        currentUser,
+        true
+      );
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || "Unable to reorder threads right now.");
+      }
     } catch (error) {
       console.error("Failed to reorder threads:", error);
       // Revert to original state on error
@@ -1787,17 +1792,27 @@ export default function App() {
     setAdminBusy(true);
     setAdminMessage("");
     try {
-      await updateDoc(doc(db, "settings", "admins"), {
-        emails: arrayUnion(email),
-      });
+      const fileServerUrl = import.meta.env.VITE_FILE_SERVER_URL || "http://localhost:3002";
+      const response = await protectedFetch(
+        `${fileServerUrl}/api/admin/admins`,
+        {
+          method: "POST",
+          body: JSON.stringify({ email }),
+        },
+        currentUser,
+        true
+      );
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || "Failed to add admin.");
+      }
       setAdminEmails((prev) => [...prev, email]);
       setAdminEmailInput("");
       setAdminMessageTone("success");
       setAdminMessage("Admin added successfully.");
-      await logAdminAction("Added admin", email);
     } catch (error) {
       setAdminMessageTone("error");
-      setAdminMessage("Failed to add admin. Try again.");
+      setAdminMessage(error.message || "Failed to add admin. Try again.");
     } finally {
       setAdminBusy(false);
     }
@@ -1819,16 +1834,25 @@ export default function App() {
     setAdminBusy(true);
     setAdminMessage("");
     try {
-      await updateDoc(doc(db, "settings", "admins"), {
-        emails: arrayRemove(email.toLowerCase()),
-      });
+      const fileServerUrl = import.meta.env.VITE_FILE_SERVER_URL || "http://localhost:3002";
+      const encodedEmail = encodeURIComponent(email.toLowerCase());
+      const response = await protectedFetch(
+        `${fileServerUrl}/api/admin/admins/${encodedEmail}`,
+        {
+          method: "DELETE",
+        },
+        currentUser
+      );
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || "Failed to remove admin.");
+      }
       setAdminEmails((prev) => prev.filter((e) => e !== email.toLowerCase()));
       setAdminMessageTone("success");
       setAdminMessage("Admin removed successfully.");
-      await logAdminAction("Removed admin", email);
     } catch (error) {
       setAdminMessageTone("error");
-      setAdminMessage("Failed to remove admin. Try again.");
+      setAdminMessage(error.message || "Failed to remove admin. Try again.");
     } finally {
       setAdminBusy(false);
     }
@@ -1846,17 +1870,23 @@ export default function App() {
     setAdminBusy(true);
     setAdminMessage("");
     try {
-      const logsSnap = await getDocs(collection(db, "adminLogs"));
-      const batch = writeBatch(db);
-      logsSnap.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-      });
-      await batch.commit();
+      const fileServerUrl = import.meta.env.VITE_FILE_SERVER_URL || "http://localhost:3002";
+      const response = await protectedFetch(
+        `${fileServerUrl}/api/admin/logs`,
+        {
+          method: "DELETE",
+        },
+        currentUser
+      );
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || "Failed to clear logs.");
+      }
       setAdminMessageTone("success");
       setAdminMessage("Logs cleared successfully.");
     } catch (error) {
       setAdminMessageTone("error");
-      setAdminMessage("Failed to clear logs. Try again.");
+      setAdminMessage(error.message || "Failed to clear logs. Try again.");
     } finally {
       setAdminBusy(false);
     }

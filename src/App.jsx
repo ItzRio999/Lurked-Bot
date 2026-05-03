@@ -1123,7 +1123,7 @@ export default function App() {
       setThreadMessage("Thread posted.");
     } catch (error) {
       setThreadMessageTone("error");
-      setThreadMessage(error.message || "Unable to post thread right now.");
+      setThreadMessage("Unable to post thread right now.");
     } finally {
       setThreadBusy(false);
     }
@@ -1178,7 +1178,7 @@ export default function App() {
       setReplyMessage("Reply posted.");
     } catch (error) {
       setReplyMessageTone("error");
-      setReplyMessage(error.message || "Unable to post reply right now.");
+      setReplyMessage("Unable to post reply right now.");
     } finally {
       setReplyBusy(false);
     }

@@ -1,6 +1,5 @@
 const express = require("express");
 const { authLimiter } = require("../middleware/rateLimiter");
-const { verifyAppCheck } = require("../middleware/appCheck");
 
 const router = express.Router();
 
@@ -21,7 +20,7 @@ const parseMinScore = (value) => {
   return Math.min(Math.max(parsed, 0), 1);
 };
 
-router.post("/auth/recaptcha/verify", authLimiter, verifyAppCheck(), async (req, res) => {
+router.post("/auth/recaptcha/verify", authLimiter, async (req, res) => {
   const secret = process.env.RECAPTCHA_V3_SECRET_KEY;
   const minScore = parseMinScore(process.env.RECAPTCHA_V3_MIN_SCORE);
   const allowedHostnames = (process.env.RECAPTCHA_ALLOWED_HOSTNAMES || "")

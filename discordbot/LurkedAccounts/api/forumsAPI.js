@@ -1,7 +1,6 @@
 const express = require("express");
 const admin = require("firebase-admin");
 const { verifyAuth, verifyAdmin } = require("../middleware/firebaseAuth");
-const { verifyAppCheck } = require("../middleware/appCheck");
 
 const router = express.Router();
 
@@ -33,7 +32,7 @@ async function writeAdminLog(action, details, adminEmail) {
   });
 }
 
-router.post("/forums/threads", verifyAppCheck(), verifyAuth, async (req, res) => {
+router.post("/forums/threads", verifyAuth, async (req, res) => {
   try {
     const title = String(req.body?.title || "").trim();
     const body = String(req.body?.body || "").trim();
@@ -69,7 +68,7 @@ router.post("/forums/threads", verifyAppCheck(), verifyAuth, async (req, res) =>
   }
 });
 
-router.post("/forums/threads/:threadId/replies", verifyAppCheck(), verifyAuth, async (req, res) => {
+router.post("/forums/threads/:threadId/replies", verifyAuth, async (req, res) => {
   try {
     const threadId = String(req.params.threadId || "").trim();
     const body = String(req.body?.body || "").trim();
@@ -120,7 +119,7 @@ router.post("/forums/threads/:threadId/replies", verifyAppCheck(), verifyAuth, a
   }
 });
 
-router.patch("/forums/threads/:threadId/pin", verifyAppCheck(), verifyAuth, verifyAdmin, async (req, res) => {
+router.patch("/forums/threads/:threadId/pin", verifyAuth, verifyAdmin, async (req, res) => {
   try {
     const threadId = String(req.params.threadId || "").trim();
     const pinned = Boolean(req.body?.pinned);
@@ -148,7 +147,7 @@ router.patch("/forums/threads/:threadId/pin", verifyAppCheck(), verifyAuth, veri
   }
 });
 
-router.delete("/forums/threads/:threadId", verifyAppCheck(), verifyAuth, verifyAdmin, async (req, res) => {
+router.delete("/forums/threads/:threadId", verifyAuth, verifyAdmin, async (req, res) => {
   try {
     const threadId = String(req.params.threadId || "").trim();
     const db = getDb();
@@ -186,7 +185,7 @@ router.delete("/forums/threads/:threadId", verifyAppCheck(), verifyAuth, verifyA
   }
 });
 
-router.delete("/forums/threads/:threadId/replies/:replyId", verifyAppCheck(), verifyAuth, verifyAdmin, async (req, res) => {
+router.delete("/forums/threads/:threadId/replies/:replyId", verifyAuth, verifyAdmin, async (req, res) => {
   try {
     const threadId = String(req.params.threadId || "").trim();
     const replyId = String(req.params.replyId || "").trim();
@@ -215,7 +214,7 @@ router.delete("/forums/threads/:threadId/replies/:replyId", verifyAppCheck(), ve
   }
 });
 
-router.post("/forums/threads/reorder", verifyAppCheck(), verifyAuth, verifyAdmin, async (req, res) => {
+router.post("/forums/threads/reorder", verifyAuth, verifyAdmin, async (req, res) => {
   try {
     const threads = Array.isArray(req.body?.threads) ? req.body.threads : [];
     if (threads.length === 0) {
@@ -250,7 +249,7 @@ router.post("/forums/threads/reorder", verifyAppCheck(), verifyAuth, verifyAdmin
   }
 });
 
-router.post("/admin/logs", verifyAppCheck(), verifyAuth, verifyAdmin, async (req, res) => {
+router.post("/admin/logs", verifyAuth, verifyAdmin, async (req, res) => {
   try {
     const action = String(req.body?.action || "").trim();
     const details = String(req.body?.details || "").trim();
@@ -267,7 +266,7 @@ router.post("/admin/logs", verifyAppCheck(), verifyAuth, verifyAdmin, async (req
   }
 });
 
-router.post("/admin/admins", verifyAppCheck(), verifyAuth, verifyAdmin, async (req, res) => {
+router.post("/admin/admins", verifyAuth, verifyAdmin, async (req, res) => {
   try {
     const email = String(req.body?.email || "").trim().toLowerCase();
     if (!email) {
@@ -287,7 +286,7 @@ router.post("/admin/admins", verifyAppCheck(), verifyAuth, verifyAdmin, async (r
   }
 });
 
-router.delete("/admin/admins/:email", verifyAppCheck(), verifyAuth, verifyAdmin, async (req, res) => {
+router.delete("/admin/admins/:email", verifyAuth, verifyAdmin, async (req, res) => {
   try {
     const email = String(req.params.email || "").trim().toLowerCase();
     if (!email) {
@@ -315,7 +314,7 @@ router.delete("/admin/admins/:email", verifyAppCheck(), verifyAuth, verifyAdmin,
   }
 });
 
-router.delete("/admin/logs", verifyAppCheck(), verifyAuth, verifyAdmin, async (req, res) => {
+router.delete("/admin/logs", verifyAuth, verifyAdmin, async (req, res) => {
   try {
     const db = getDb();
     const logsSnap = await db.collection("adminLogs").get();

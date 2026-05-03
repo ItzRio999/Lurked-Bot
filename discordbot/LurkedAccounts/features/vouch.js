@@ -1,23 +1,29 @@
-const { EmbedBuilder, MessageFlags, ChannelType } = require("discord.js");
+const { EmbedBuilder, MessageFlags } = require("discord.js");
 const { saveJson, addLogo } = require("../utils/fileManager");
 const { hasVerifiedRole } = require("../utils/permissions");
+const {
+  ensureVouchState,
+  formatBytes,
+  getMaxImageBytes,
+  getMaxVideoBytes,
+  upsertUserVouch,
+  validateProofAttachment,
+} = require("../utils/vouchStore");
 
-const ALLOWED_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif", "mp4"];
+const BACKUP_COLLECTION = "vouches_backup";
+const BACKUP_DOC = "latest";
 
 function getStarString(stars) {
   return "⭐".repeat(Math.min(5, Math.max(1, stars)));
 }
 
-function getColorByStars(stars) {
-  if (stars >= 5) return 0xF1C40F; // Gold
-  if (stars >= 4) return 0xE67E22; // Orange
-  if (stars >= 3) return 0x3498DB; // Blue
-  if (stars >= 2) return 0x95A5A6; // Gray
-  return 0xED4245;                 // Red
+function getFirestore() {
+  const admin = require("firebase-admin");
+  if (!admin.apps.length) throw new Error("Firebase Admin not initialized");
+  return admin.firestore();
 }
 
 async function submitVouch(interaction, config, configPath, data, dataPath) {
-  // Check if vouch system is configured and enabled
   if (!config.vouch || !config.vouch.enabled || !config.vouch.channel_id) {
     const embed = new EmbedBuilder()
       .setDescription("❌ The vouch system is not set up yet. An admin needs to run `/vouchsetup channel` first.")
@@ -25,7 +31,6 @@ async function submitVouch(interaction, config, configPath, data, dataPath) {
     return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 
-  // Enforce role requirement
   const verifiedRoleId = config?.verification?.verified_role_id || "1451251793303703616";
   if (!hasVerifiedRole(interaction.member, config)) {
     const embed = new EmbedBuilder()
@@ -38,44 +43,29 @@ async function submitVouch(interaction, config, configPath, data, dataPath) {
   const stars = interaction.options.getInteger("stars", true);
   const proof = interaction.options.getAttachment("proof");
 
-  // Validate proof attachment
-  if (proof) {
-    const ext = proof.name.split(".").pop().toLowerCase();
-    if (!ALLOWED_EXTENSIONS.includes(ext)) {
-      const embed = new EmbedBuilder()
-        .setDescription("❌ Invalid proof file type! Allowed: PNG, JPG, JPEG, WEBP, GIF, MP4")
-        .setColor(0xED4245);
-      return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
-    }
+  const proofValidation = validateProofAttachment(proof);
+  if (!proofValidation.ok) {
+    const embed = new EmbedBuilder()
+      .setDescription(`❌ ${proofValidation.error}`)
+      .addFields({
+        name: "Proof limits",
+        value: `Images: ${formatBytes(getMaxImageBytes())} max\nVideos: ${formatBytes(getMaxVideoBytes())} max`,
+        inline: false,
+      })
+      .setColor(0xED4245);
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 
-  // Increment counters
-  if (!data.vouches) data.vouches = [];
-  if (!data.vouch_counter) data.vouch_counter = 0;
-  data.vouch_counter++;
+  ensureVouchState(data);
+  const previousVouch = data.vouches.find((vouch) => vouch.user_id === interaction.user.id) || null;
+  data.vouch_counter += 1;
 
   const vouchNumber = data.vouch_counter;
   const timestamp = new Date();
   const timestampUnix = Math.floor(timestamp.getTime() / 1000);
+  const isVideo = proofValidation.proofType === "video";
+  const isImage = proofValidation.proofType === "image";
 
-  const isVideo = proof && proof.name.toLowerCase().endsWith(".mp4");
-  const isImage = proof && !isVideo;
-
-  // Save vouch record
-  data.vouches.push({
-    id: vouchNumber,
-    user_id: interaction.user.id,
-    user_tag: interaction.user.tag,
-    message: vouchMessage,
-    stars,
-    proof_url: proof ? proof.url : null,
-    proof_type: isVideo ? "video" : isImage ? "image" : null,
-    timestamp: timestamp.toISOString(),
-    guild_id: interaction.guild.id,
-  });
-  saveJson(dataPath, data);
-
-  // Fetch the output channel
   const vouchChannel = interaction.guild.channels.cache.get(config.vouch.channel_id);
   if (!vouchChannel) {
     const embed = new EmbedBuilder()
@@ -84,16 +74,15 @@ async function submitVouch(interaction, config, configPath, data, dataPath) {
     return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 
-  // Build vouch embed
   const footer = config.vouch.footer || `${interaction.guild.name}, All Rights Reserved.`;
   const embedColor = config.vouch.embed_color || 0x522081;
 
   const vouchEmbed = new EmbedBuilder()
-    .setTitle("New vouch created!")
+    .setTitle(previousVouch ? "Vouch updated!" : "New vouch created!")
     .setDescription(getStarString(stars))
     .addFields(
       { name: "Vouch:", value: vouchMessage, inline: false },
-      { name: "Vouch N°", value: `${vouchNumber}`, inline: true },
+      { name: "Vouch No.", value: `${vouchNumber}`, inline: true },
       { name: "Vouched by:", value: `@${interaction.user.username}`, inline: true },
       { name: "Vouched at:", value: `<t:${timestampUnix}:F>`, inline: true }
     )
@@ -109,15 +98,42 @@ async function submitVouch(interaction, config, configPath, data, dataPath) {
     vouchEmbed.setImage(proof.url);
   }
 
-  // Send to vouch channel; video proofs are appended as a URL so Discord auto-embeds them
-  await vouchChannel.send({
+  const sentMessage = await vouchChannel.send({
     embeds: [vouchEmbed],
     content: isVideo ? `📹 **Proof:** ${proof.url}` : undefined,
   });
 
-  // Ephemeral confirmation
+  if (previousVouch?.channel_message_id) {
+    try {
+      const previousMessage = await vouchChannel.messages.fetch(previousVouch.channel_message_id);
+      await previousMessage.delete();
+    } catch (error) {
+      console.warn("Failed to delete previous vouch message:", error.message);
+    }
+  }
+
+  upsertUserVouch(data, {
+    id: vouchNumber,
+    user_id: interaction.user.id,
+    user_tag: interaction.user.tag,
+    message: vouchMessage,
+    stars,
+    proof_url: proof ? proof.url : null,
+    proof_type: proofValidation.proofType,
+    proof_size: proofValidation.proofSize,
+    proof_name: proof?.name || null,
+    timestamp: timestamp.toISOString(),
+    guild_id: interaction.guild.id,
+    channel_message_id: sentMessage.id,
+  });
+  saveJson(dataPath, data);
+
   const confirmEmbed = new EmbedBuilder()
-    .setDescription(`✅ Your vouch has been submitted! Check <#${config.vouch.channel_id}> to see it.`)
+    .setDescription(
+      previousVouch
+        ? `✅ Your previous vouch was replaced. Check <#${config.vouch.channel_id}> to see the updated version.`
+        : `✅ Your vouch has been submitted! Check <#${config.vouch.channel_id}> to see it.`
+    )
     .setColor(0x57F287);
   return interaction.reply({ embeds: [confirmEmbed], flags: MessageFlags.Ephemeral });
 }
@@ -232,19 +248,11 @@ async function setupVouchSystem(interaction, config, configPath) {
   }
 }
 
-const BACKUP_COLLECTION = 'vouches_backup';
-const BACKUP_DOC = 'latest';
-
-function getFirestore() {
-  const admin = require('firebase-admin');
-  if (!admin.apps.length) throw new Error('Firebase Admin not initialized');
-  return admin.firestore();
-}
-
 async function backupVouches(interaction, data, dataPath) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   try {
     const db = getFirestore();
+    ensureVouchState(data);
     const vouches = Array.isArray(data.vouches) ? data.vouches : [];
     const backed_up_at = new Date().toISOString();
 
@@ -256,14 +264,14 @@ async function backupVouches(interaction, data, dataPath) {
     });
 
     const embed = new EmbedBuilder()
-      .setTitle('✅ Vouch Backup Complete')
-      .setDescription(`Successfully backed up **${vouches.length}** vouch${vouches.length !== 1 ? 'es' : ''} to Firebase Firestore.`)
-      .addFields({ name: 'Timestamp', value: `<t:${Math.floor(new Date(backed_up_at).getTime() / 1000)}:F>`, inline: true })
+      .setTitle("✅ Vouch Backup Complete")
+      .setDescription(`Successfully backed up **${vouches.length}** vouch${vouches.length !== 1 ? "es" : ""} to Firebase Firestore.`)
+      .addFields({ name: "Timestamp", value: `<t:${Math.floor(new Date(backed_up_at).getTime() / 1000)}:F>`, inline: true })
       .setColor(0x57F287);
 
     return interaction.editReply({ embeds: [embed] });
   } catch (err) {
-    console.error('❌ vouchbackup error:', err);
+    console.error("vouchbackup error:", err);
     const embed = new EmbedBuilder()
       .setDescription(`❌ Backup failed: ${err.message}`)
       .setColor(0xED4245);
@@ -279,7 +287,7 @@ async function restoreVouches(interaction, data, dataPath) {
 
     if (!snapshot.exists) {
       const embed = new EmbedBuilder()
-        .setDescription('❌ No backup found in Firebase Firestore. Run `/vouchbackup` first.')
+        .setDescription("❌ No backup found in Firebase Firestore. Run `/vouchbackup` first.")
         .setColor(0xED4245);
       return interaction.editReply({ embeds: [embed] });
     }
@@ -287,18 +295,19 @@ async function restoreVouches(interaction, data, dataPath) {
     const backup = snapshot.data();
     data.vouches = backup.vouches || [];
     data.vouch_counter = backup.vouch_counter ?? data.vouches.length;
+    ensureVouchState(data);
     saveJson(dataPath, data);
 
     const ts = Math.floor(new Date(backup.backed_up_at).getTime() / 1000);
     const embed = new EmbedBuilder()
-      .setTitle('✅ Vouch Restore Complete')
-      .setDescription(`Restored **${data.vouches.length}** vouch${data.vouches.length !== 1 ? 'es' : ''} from backup.`)
-      .addFields({ name: 'Backup created', value: `<t:${ts}:F>`, inline: true })
+      .setTitle("✅ Vouch Restore Complete")
+      .setDescription(`Restored **${data.vouches.length}** vouch${data.vouches.length !== 1 ? "es" : ""} from backup.`)
+      .addFields({ name: "Backup created", value: `<t:${ts}:F>`, inline: true })
       .setColor(0x57F287);
 
     return interaction.editReply({ embeds: [embed] });
   } catch (err) {
-    console.error('❌ vouchrestore error:', err);
+    console.error("vouchrestore error:", err);
     const embed = new EmbedBuilder()
       .setDescription(`❌ Restore failed: ${err.message}`)
       .setColor(0xED4245);

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { saveJson, DATA_PATH, CONFIG_PATH } = require('../utils/fileManager');
 const { verifyAuth, verifyAdmin } = require('../middleware/firebaseAuth');
+const { ensureVouchState } = require("../utils/vouchStore");
 
 // firebase-admin is initialized by firebaseAuth.js when it is first required.
 // require('firebase-admin') returns the same singleton instance.
@@ -16,13 +17,7 @@ const BACKUP_DOC = 'latest';
 
 function getLiveData(req) {
   const liveData = req.app.locals.data;
-  if (!liveData.vouches || !Array.isArray(liveData.vouches)) {
-    liveData.vouches = [];
-  }
-  if (!Number.isInteger(liveData.vouch_counter)) {
-    liveData.vouch_counter = liveData.vouches.length;
-  }
-  return liveData;
+  return ensureVouchState(liveData);
 }
 
 /**
@@ -129,6 +124,7 @@ router.post('/vouches/restore', verifyAuth, verifyAdmin, async (req, res) => {
     const data = getLiveData(req);
     data.vouches = backup.vouches || [];
     data.vouch_counter = backup.vouch_counter ?? data.vouches.length;
+    ensureVouchState(data);
     saveJson(DATA_PATH, data);
 
     res.json({
@@ -204,7 +200,9 @@ router.get('/vouches', verifyAuth, verifyAdmin, async (req, res) => {
 router.delete('/vouches/:vouchId', verifyAuth, verifyAdmin, async (req, res) => {
   try {
     const vouchId = parseInt(req.params.vouchId, 10);
-    const liveData = req.app.locals.data;
+    const liveData = ensureVouchState(req.app.locals.data);
+    const client = req.app.locals.client;
+    const config = req.app.locals.config;
 
     if (!Array.isArray(liveData.vouches)) {
       return res.status(404).json({ success: false, error: 'No vouches found' });
@@ -215,8 +213,20 @@ router.delete('/vouches/:vouchId', verifyAuth, verifyAdmin, async (req, res) => 
       return res.status(404).json({ success: false, error: 'Vouch not found' });
     }
 
+    const [removedVouch] = liveData.vouches.splice(index, 1);
+    if (removedVouch?.channel_message_id && config?.vouch?.channel_id) {
+      try {
+        const vouchChannel = await client.channels.fetch(config.vouch.channel_id);
+        if (vouchChannel?.isTextBased?.()) {
+          const previousMessage = await vouchChannel.messages.fetch(removedVouch.channel_message_id);
+          await previousMessage.delete();
+        }
+      } catch (error) {
+        console.warn('Failed to delete vouch channel message:', error.message);
+      }
+    }
+
     // Remove from in-memory data (prevents bot overwrites) and persist to disk
-    liveData.vouches.splice(index, 1);
     saveJson(DATA_PATH, liveData);
 
     res.json({ success: true, message: `Vouch #${vouchId} deleted` });

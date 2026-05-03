@@ -931,10 +931,8 @@ export default function App() {
           const profiles = {};
           const idsToFetch = [];
 
-          // Check cache first
-          uniqueAuthorIds.forEach(authorId => {
+          uniqueAuthorIds.forEach((authorId) => {
             if (discordProfileCache.current[authorId]) {
-              // Extract profile without the _cachedAt metadata
               const { _cachedAt, ...profileData } = discordProfileCache.current[authorId];
               profiles[authorId] = profileData;
             } else {
@@ -942,34 +940,34 @@ export default function App() {
             }
           });
 
-          // Fetch uncached profiles
           if (idsToFetch.length > 0) {
-            console.log(`Fetching Discord profiles for ${idsToFetch.length} users...`);
-            await Promise.all(
-              idsToFetch.map(async (authorId) => {
-                try {
-                  const profileDoc = await getDoc(doc(db, "users", authorId, "discord", "profile"));
-                  if (profileDoc.exists()) {
-                    const profileData = profileDoc.data();
-                    profiles[authorId] = profileData;
-                    // Cache the profile for 5 minutes
-                    discordProfileCache.current[authorId] = {
-                      ...profileData,
-                      _cachedAt: Date.now(),
-                    };
-                    console.log(`✓ Loaded Discord profile for user ${authorId}:`, profileData.username);
-                  } else {
-                    console.warn(`✗ No Discord profile found for user ${authorId} (user may not have linked Discord)`);
-                  }
-                } catch (error) {
-                  // Silently fail - profile won't be shown if fetch fails
-                  console.warn(`Failed to fetch Discord profile for ${authorId}:`, error);
-                }
-              })
-            );
+            try {
+              const fileServerUrl = import.meta.env.VITE_FILE_SERVER_URL || "http://localhost:3002";
+              const response = await protectedFetch(
+                `${fileServerUrl}/api/oauth/discord/profiles`,
+                {
+                  method: "POST",
+                  body: JSON.stringify({ userIds: idsToFetch }),
+                },
+                currentUser,
+                true
+              );
+              const payload = await response.json().catch(() => ({}));
+
+              if (response.ok && payload.success && payload.profiles) {
+                Object.entries(payload.profiles).forEach(([authorId, profileData]) => {
+                  profiles[authorId] = profileData;
+                  discordProfileCache.current[authorId] = {
+                    ...profileData,
+                    _cachedAt: Date.now(),
+                  };
+                });
+              }
+            } catch {
+              // Silently fail - profile won't be shown if fetch fails
+            }
           }
 
-          console.log(`Setting ${Object.keys(profiles).length} Discord profiles to state`, profiles);
           setReplyDiscordProfiles(profiles);
         } else {
           setReplyDiscordProfiles({});
@@ -989,7 +987,7 @@ export default function App() {
       }
     );
     return () => unsubscribe();
-  }, [activeThreadId]);
+  }, [activeThreadId, currentUser]);
 
   const handleDropSubmit = async (event) => {
     event.preventDefault();
@@ -2827,3 +2825,4 @@ export default function App() {
     </>
   );
 }
+

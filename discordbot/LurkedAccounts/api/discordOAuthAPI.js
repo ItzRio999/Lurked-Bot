@@ -326,4 +326,63 @@ router.get("/discord/profile", authLimiter, verifyAuth, async (req, res) => {
   }
 });
 
+/**
+ * POST /api/oauth/discord/profiles
+ * Protected endpoint - fetch sanitized linked Discord profiles for multiple users
+ */
+router.post("/discord/profiles", authLimiter, verifyAuth, async (req, res) => {
+  try {
+    const userIds = Array.isArray(req.body?.userIds)
+      ? req.body.userIds
+          .map((value) => String(value || "").trim())
+          .filter(Boolean)
+          .slice(0, 25)
+      : [];
+
+    if (userIds.length === 0) {
+      return res.json({
+        success: true,
+        profiles: {},
+      });
+    }
+
+    const profiles = {};
+    const firestore = admin.firestore();
+
+    await Promise.all(
+      userIds.map(async (userId) => {
+        const profileDoc = await firestore
+          .collection("users")
+          .doc(userId)
+          .collection("discord")
+          .doc("profile")
+          .get();
+
+        if (!profileDoc.exists) {
+          return;
+        }
+
+        const profile = profileDoc.data() || {};
+        profiles[userId] = {
+          username: profile.username || null,
+          discriminator: profile.discriminator || "0",
+          globalName: profile.globalName || profile.username || null,
+          avatarUrl: profile.avatarUrl || null,
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      profiles,
+    });
+  } catch (error) {
+    console.error("Error fetching Discord profiles:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch Discord profiles",
+    });
+  }
+});
+
 module.exports = router;

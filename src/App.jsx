@@ -1542,6 +1542,7 @@ export default function App() {
     setAuthError("");
     setAuthNotice("");
     try {
+      await runRecaptchaCheck("auth_password_reset");
       await sendPasswordResetEmail(auth, trimmedEmail);
       setAuthNotice("Password reset email sent.");
     } catch (error) {
@@ -1608,6 +1609,7 @@ export default function App() {
     setProfileBusy(true);
     setProfileMessage("");
     try {
+      await runRecaptchaCheck("auth_password_reset");
       await sendPasswordResetEmail(auth, currentUser.email);
       setProfileMessage("Password reset email sent.");
     } catch (error) {

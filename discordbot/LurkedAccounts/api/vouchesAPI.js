@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { loadJson, saveJson, DATA_PATH, CONFIG_PATH } = require('../utils/fileManager');
+const { saveJson, DATA_PATH, CONFIG_PATH } = require('../utils/fileManager');
 const { verifyAuth, verifyAdmin } = require('../middleware/firebaseAuth');
 
 // firebase-admin is initialized by firebaseAuth.js when it is first required.
@@ -14,6 +14,17 @@ function getFirestore() {
 const BACKUP_COLLECTION = 'vouches_backup';
 const BACKUP_DOC = 'latest';
 
+function getLiveData(req) {
+  const liveData = req.app.locals.data;
+  if (!liveData.vouches || !Array.isArray(liveData.vouches)) {
+    liveData.vouches = [];
+  }
+  if (!Number.isInteger(liveData.vouch_counter)) {
+    liveData.vouch_counter = liveData.vouches.length;
+  }
+  return liveData;
+}
+
 /**
  * GET /api/vouches/public
  * Returns sanitised vouches for the public Feedback page. No auth required.
@@ -21,7 +32,7 @@ const BACKUP_DOC = 'latest';
 router.get('/vouches/public', async (req, res) => {
   try {
     const client = req.app.locals.client;
-    const data = loadJson(DATA_PATH, {});
+    const data = getLiveData(req);
     const vouches = Array.isArray(data.vouches) ? data.vouches : [];
 
     const enriched = await Promise.all(
@@ -82,7 +93,7 @@ router.get('/vouches/backup/status', verifyAuth, verifyAdmin, async (req, res) =
 router.post('/vouches/backup', verifyAuth, verifyAdmin, async (req, res) => {
   try {
     const db = getFirestore();
-    const data = loadJson(DATA_PATH, {});
+    const data = getLiveData(req);
     const vouches = Array.isArray(data.vouches) ? data.vouches : [];
     const counter = data.vouch_counter || 0;
     const backed_up_at = new Date().toISOString();
@@ -115,7 +126,7 @@ router.post('/vouches/restore', verifyAuth, verifyAdmin, async (req, res) => {
     }
 
     const backup = snapshot.data();
-    const data = loadJson(DATA_PATH, {});
+    const data = getLiveData(req);
     data.vouches = backup.vouches || [];
     data.vouch_counter = backup.vouch_counter ?? data.vouches.length;
     saveJson(DATA_PATH, data);
@@ -140,7 +151,7 @@ router.get('/vouches', verifyAuth, verifyAdmin, async (req, res) => {
   try {
     const client = req.app.locals.client;
     const config = req.app.locals.config;
-    const data = loadJson(DATA_PATH, {});
+    const data = getLiveData(req);
     const vouches = Array.isArray(data.vouches) ? data.vouches : [];
 
     // Resolve user info for each vouch

@@ -4,6 +4,9 @@ const { verifyAuth, verifyAdmin } = require("../middleware/firebaseAuth");
 const { verifyAppCheck } = require("../middleware/appCheck");
 
 const router = express.Router();
+const THREAD_COOLDOWN_MS = 2 * 60 * 1000;
+const REPLY_COOLDOWN_MS = 30 * 1000;
+const DUPLICATE_WINDOW_MS = 10 * 60 * 1000;
 
 function getDb() {
   if (!admin.apps.length) {
@@ -21,6 +24,36 @@ function getAuthorName(req) {
   if (localPart) return localPart;
 
   return "Member";
+}
+
+function normalizeForumValue(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildThreadFingerprint(title, body, category) {
+  return `${normalizeForumValue(category)}|${normalizeForumValue(title)}|${normalizeForumValue(body)}`;
+}
+
+function buildReplyFingerprint(body, threadId, replyToId) {
+  return `${threadId}|${replyToId || "root"}|${normalizeForumValue(body)}`;
+}
+
+function makeGuardrailError(status, message) {
+  const error = new Error(message);
+  error.statusCode = status;
+  return error;
+}
+
+function getGuardTimestampMs(rawValue) {
+  if (!rawValue) return 0;
+  if (typeof rawValue?.toMillis === "function") {
+    return rawValue.toMillis();
+  }
+  const parsed = new Date(rawValue).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 async function writeAdminLog(action, details, adminEmail) {
@@ -49,23 +82,54 @@ router.post("/forums/threads", verifyAppCheck(), verifyAuth, async (req, res) =>
     }
 
     const db = getDb();
-    const docRef = await db.collection("threads").add({
-      title,
-      body,
-      category,
-      replyCount: 0,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      authorId: req.user.uid,
-      authorName: getAuthorName(req),
-      orderIndex: Number.isFinite(orderIndex) ? orderIndex : Date.now(),
-      pinned: false,
+    const threadRef = db.collection("threads").doc();
+    const guardRef = db.collection("forumGuards").doc(req.user.uid);
+    const authorName = getAuthorName(req);
+    const threadFingerprint = buildThreadFingerprint(title, body, category);
+
+    await db.runTransaction(async (transaction) => {
+      const guardSnap = await transaction.get(guardRef);
+      const guard = guardSnap.exists ? guardSnap.data() || {} : {};
+      const now = Date.now();
+      const lastThreadAtMs = getGuardTimestampMs(guard.lastThreadAt);
+
+      if (lastThreadAtMs && now - lastThreadAtMs < THREAD_COOLDOWN_MS) {
+        const secondsRemaining = Math.max(1, Math.ceil((THREAD_COOLDOWN_MS - (now - lastThreadAtMs)) / 1000));
+        throw makeGuardrailError(429, `Please wait ${secondsRemaining} more second${secondsRemaining === 1 ? "" : "s"} before posting another thread.`);
+      }
+
+      if (
+        guard.lastThreadFingerprint === threadFingerprint
+        && lastThreadAtMs
+        && now - lastThreadAtMs < DUPLICATE_WINDOW_MS
+      ) {
+        throw makeGuardrailError(409, "That thread looks like a duplicate of your most recent post. Please edit the existing one or wait a bit before reposting.");
+      }
+
+      transaction.set(threadRef, {
+        title,
+        body,
+        category,
+        replyCount: 0,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        authorId: req.user.uid,
+        authorName,
+        orderIndex: Number.isFinite(orderIndex) ? orderIndex : Date.now(),
+        pinned: false,
+      });
+
+      transaction.set(guardRef, {
+        lastThreadAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastThreadFingerprint: threadFingerprint,
+        lastForumActionAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
     });
 
-    return res.json({ success: true, id: docRef.id });
+    return res.json({ success: true, id: threadRef.id });
   } catch (error) {
     console.error("Error creating thread:", error);
-    return res.status(500).json({ success: false, error: "Unable to post thread right now." });
+    return res.status(error.statusCode || 500).json({ success: false, error: error.message || "Unable to post thread right now." });
   }
 });
 
@@ -86,37 +150,66 @@ router.post("/forums/threads/:threadId/replies", verifyAppCheck(), verifyAuth, a
 
     const db = getDb();
     const threadRef = db.collection("threads").doc(threadId);
-    const threadSnap = await threadRef.get();
-
-    if (!threadSnap.exists) {
-      return res.status(404).json({ success: false, error: "Thread not found." });
-    }
-
-    const replyData = {
-      body,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      authorId: req.user.uid,
-      authorName: getAuthorName(req),
-    };
-
-    if (replyToId && replyToAuthor) {
-      replyData.replyToId = replyToId;
-      replyData.replyToAuthor = replyToAuthor;
-    }
-
-    const batch = db.batch();
+    const guardRef = db.collection("forumGuards").doc(req.user.uid);
     const replyRef = threadRef.collection("replies").doc();
-    batch.set(replyRef, replyData);
-    batch.update(threadRef, {
-      replyCount: admin.firestore.FieldValue.increment(1),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    const replyFingerprint = buildReplyFingerprint(body, threadId, replyToId);
+    const authorName = getAuthorName(req);
+
+    await db.runTransaction(async (transaction) => {
+      const [threadSnap, guardSnap] = await Promise.all([
+        transaction.get(threadRef),
+        transaction.get(guardRef),
+      ]);
+
+      if (!threadSnap.exists) {
+        throw makeGuardrailError(404, "Thread not found.");
+      }
+
+      const guard = guardSnap.exists ? guardSnap.data() || {} : {};
+      const now = Date.now();
+      const lastReplyAtMs = getGuardTimestampMs(guard.lastReplyAt);
+
+      if (lastReplyAtMs && now - lastReplyAtMs < REPLY_COOLDOWN_MS) {
+        const secondsRemaining = Math.max(1, Math.ceil((REPLY_COOLDOWN_MS - (now - lastReplyAtMs)) / 1000));
+        throw makeGuardrailError(429, `Please wait ${secondsRemaining} more second${secondsRemaining === 1 ? "" : "s"} before posting another reply.`);
+      }
+
+      if (
+        guard.lastReplyFingerprint === replyFingerprint
+        && lastReplyAtMs
+        && now - lastReplyAtMs < DUPLICATE_WINDOW_MS
+      ) {
+        throw makeGuardrailError(409, "That reply looks like a duplicate of your last one. Please edit it or wait a bit before reposting.");
+      }
+
+      const replyData = {
+        body,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        authorId: req.user.uid,
+        authorName,
+      };
+
+      if (replyToId && replyToAuthor) {
+        replyData.replyToId = replyToId;
+        replyData.replyToAuthor = replyToAuthor;
+      }
+
+      transaction.set(replyRef, replyData);
+      transaction.update(threadRef, {
+        replyCount: admin.firestore.FieldValue.increment(1),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      transaction.set(guardRef, {
+        lastReplyAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastReplyFingerprint: replyFingerprint,
+        lastForumActionAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
     });
-    await batch.commit();
 
     return res.json({ success: true, id: replyRef.id });
   } catch (error) {
     console.error("Error creating reply:", error);
-    return res.status(500).json({ success: false, error: "Unable to post reply right now." });
+    return res.status(error.statusCode || 500).json({ success: false, error: error.message || "Unable to post reply right now." });
   }
 });
 

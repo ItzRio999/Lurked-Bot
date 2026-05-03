@@ -48,7 +48,6 @@ import BotDashboardPage from "./components/sections/BotDashboardPage";
 import FeedbackPage from "./components/sections/FeedbackPage";
 import SettingsPage from "./components/sections/SettingsPage";
 import LurkedLogo from "../icons/Lurked-updated.png";
-import DiscordLogo from "../icons/discord.png";
 import LurkedBotLogo from "../icons/LurkedBot-logo.png";
 
 export default function App() {
@@ -1126,7 +1125,7 @@ export default function App() {
       setThreadMessage("Thread posted.");
     } catch (error) {
       setThreadMessageTone("error");
-      setThreadMessage("Unable to post thread right now.");
+      setThreadMessage(error.message || "Unable to post thread right now.");
     } finally {
       setThreadBusy(false);
     }
@@ -1181,7 +1180,7 @@ export default function App() {
       setReplyMessage("Reply posted.");
     } catch (error) {
       setReplyMessageTone("error");
-      setReplyMessage("Unable to post reply right now.");
+      setReplyMessage(error.message || "Unable to post reply right now.");
     } finally {
       setReplyBusy(false);
     }
@@ -2607,7 +2606,6 @@ export default function App() {
       <BackgroundGlow profile={deviceProfile} />
       <NavBar
         LurkedLogo={LurkedLogo}
-        DiscordLogo={DiscordLogo}
         navItems={navItems}
         pageLabels={pageLabels}
         navLinkClass={navLinkClass}
@@ -2634,7 +2632,6 @@ export default function App() {
         currentUser={currentUser}
         welcomeText={welcomeText}
         onNav={handleNav}
-        LurkedLogo={LurkedLogo}
         teamMembers={teamMembers}
         teamMembersLoading={teamMembersLoading}
         teamMembersError={teamMembersError}
@@ -2813,7 +2810,7 @@ export default function App() {
         onDiscordLink={handleDiscordLink}
         onDiscordUnlink={handleDiscordUnlink}
       />
-      <Footer LurkedLogo={LurkedLogo} DiscordLogo={DiscordLogo} />
+      <Footer LurkedLogo={LurkedLogo} />
       <AuthModal
         authMode={authMode}
         authEmail={authEmail}

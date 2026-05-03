@@ -3,6 +3,8 @@ const { saveJson, addLogo } = require("../utils/fileManager");
 const { searchMoviePoster } = require("../utils/tmdb");
 const { hasVerifiedRole, getVerifiedRoleId } = require("../utils/permissions");
 
+const MOVIE_REQUEST_COOLDOWN_MS = 30 * 60 * 1000;
+
 function ensureMovieRequestStore(data) {
   if (!Array.isArray(data.movie_requests)) {
     data.movie_requests = [];
@@ -19,6 +21,13 @@ function truncate(value, maxLength) {
   }
 
   return `${value.slice(0, maxLength - 3)}...`;
+}
+
+function normalizeMovieRequestValue(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 async function requestMovie(interaction, config, data, dataPath) {
@@ -64,6 +73,47 @@ async function requestMovie(interaction, config, data, dataPath) {
     const embed = addLogo(
       new EmbedBuilder()
         .setDescription(`You need the <@&${verifiedRoleId}> role to use this command.`)
+        .setColor(0xED4245),
+      config
+    );
+    return interaction.editReply({ embeds: [embed] });
+  }
+
+  const now = Date.now();
+  const requesterId = interaction.user.id;
+  const normalizedTitle = normalizeMovieRequestValue(title);
+  const recentRequestFromUser = data.movie_requests
+    .filter((request) => request.requester_id === requesterId)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+
+  if (recentRequestFromUser) {
+    const recentCreatedAt = new Date(recentRequestFromUser.created_at).getTime();
+    if (Number.isFinite(recentCreatedAt)) {
+      const elapsedMs = now - recentCreatedAt;
+      if (elapsedMs < MOVIE_REQUEST_COOLDOWN_MS) {
+        const minutesRemaining = Math.max(1, Math.ceil((MOVIE_REQUEST_COOLDOWN_MS - elapsedMs) / 60000));
+        const embed = addLogo(
+          new EmbedBuilder()
+            .setDescription(`Please wait about ${minutesRemaining} more minute${minutesRemaining === 1 ? "" : "s"} before submitting another movie request.`)
+            .setColor(0xED4245),
+          config
+        );
+        return interaction.editReply({ embeds: [embed] });
+      }
+    }
+  }
+
+  const duplicateOpenRequest = data.movie_requests.find((request) => (
+    request.requester_id === requesterId
+    && (request.status || "open") === "open"
+    && normalizeMovieRequestValue(request.title) === normalizedTitle
+    && Number(request.year) === Number(year)
+  ));
+
+  if (duplicateOpenRequest) {
+    const embed = addLogo(
+      new EmbedBuilder()
+        .setDescription(`You already have an open request for **${title} (${year})**. Please wait for staff to review it before sending the same request again.`)
         .setColor(0xED4245),
       config
     );

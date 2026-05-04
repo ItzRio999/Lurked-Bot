@@ -53,6 +53,17 @@ async function checkRecaptcha(token, action, ip) {
   const hostnameAllowed = allowedHostnames.length === 0 || allowedHostnames.includes(hostname);
 
   if (!verification.success || !actionMatches || !hostnameAllowed || score < minScore) {
+    console.error("[reCAPTCHA] Verification failed:", {
+      success: verification.success,
+      errorCodes: verification["error-codes"],
+      action: verification.action,
+      expectedAction: action,
+      actionMatches,
+      hostname,
+      hostnameAllowed,
+      score,
+      minScore,
+    });
     throw Object.assign(new Error("Security check failed. Please try again."), { status: 403 });
   }
 

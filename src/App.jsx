@@ -20,7 +20,8 @@ import {
   query,
   setDoc,
 } from "firebase/firestore";
-import { auth, db } from "./lib/firebase";
+import { auth, db, appCheck } from "./lib/firebase";
+import { getToken } from "firebase/app-check";
 import { adminEmails as defaultAdminEmails, forumCategories, navItems, pageLabels } from "./data/appData";
 import { authButtonClass, authPrimaryButtonClass } from "./styles/buttonClasses";
 import { protectedFetch } from "./utils/apiClient";
@@ -152,6 +153,13 @@ export default function App() {
   const requiresDiscord = (page) => {
     return ["forums", "drops", "community"].includes(page) && !discordProfile;
   };
+
+  // Pre-warm the App Check token on mount so it's ready before the first sign-in attempt.
+  useEffect(() => {
+    if (appCheck) {
+      getToken(appCheck, false).catch(() => {});
+    }
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -1043,7 +1051,7 @@ export default function App() {
       }
     } catch (error) {
       console.error('Upload error:', error);
-      setDropMessage(error.message || "Upload failed. Try again.");
+      setDropMessage("Upload failed. Try again.");
     } finally {
       setDropBusy(false);
     }
@@ -1813,7 +1821,7 @@ export default function App() {
       setAdminMessage("Admin added successfully.");
     } catch (error) {
       setAdminMessageTone("error");
-      setAdminMessage(error.message || "Failed to add admin. Try again.");
+      setAdminMessage("Failed to add admin. Try again.");
     } finally {
       setAdminBusy(false);
     }
@@ -1853,7 +1861,7 @@ export default function App() {
       setAdminMessage("Admin removed successfully.");
     } catch (error) {
       setAdminMessageTone("error");
-      setAdminMessage(error.message || "Failed to remove admin. Try again.");
+      setAdminMessage("Failed to remove admin. Try again.");
     } finally {
       setAdminBusy(false);
     }
@@ -1887,7 +1895,7 @@ export default function App() {
       setAdminMessage("Logs cleared successfully.");
     } catch (error) {
       setAdminMessageTone("error");
-      setAdminMessage(error.message || "Failed to clear logs. Try again.");
+      setAdminMessage("Failed to clear logs. Try again.");
     } finally {
       setAdminBusy(false);
     }
@@ -2002,7 +2010,7 @@ export default function App() {
     } catch (error) {
       console.error('Error uploading drop:', error);
       setDropUploadMessageTone("error");
-      setDropUploadMessage(error.message || "Failed to upload drop. Try again.");
+      setDropUploadMessage("Failed to upload drop. Try again.");
     } finally {
       setDropUploadBusy(false);
     }
@@ -2045,7 +2053,7 @@ export default function App() {
     } catch (error) {
       console.error('Error deleting drop:', error);
       setAdminMessageTone("error");
-      setAdminMessage(error.message || "Failed to delete drop. Try again.");
+      setAdminMessage("Failed to delete drop. Try again.");
     } finally {
       setAdminBusy(false);
     }
@@ -2131,7 +2139,7 @@ export default function App() {
     } catch (error) {
       console.error('Error scheduling event:', error);
       setEventUploadMessageTone("error");
-      setEventUploadMessage(error.message || "Failed to schedule event. Try again.");
+      setEventUploadMessage("Failed to schedule event. Try again.");
     } finally {
       setEventUploadBusy(false);
     }
@@ -2174,7 +2182,7 @@ export default function App() {
     } catch (error) {
       console.error('Error deleting event:', error);
       setEventUploadMessageTone("error");
-      setEventUploadMessage(error.message || "Failed to delete event. Try again.");
+      setEventUploadMessage("Failed to delete event. Try again.");
     } finally {
       setEventUploadBusy(false);
     }
@@ -2311,7 +2319,7 @@ export default function App() {
     } catch (error) {
       console.error("Error reviewing movie request:", error);
       setEventUploadMessageTone("error");
-      setEventUploadMessage(error.message || "Failed to review movie request.");
+      setEventUploadMessage("Failed to review movie request.");
     } finally {
       setEventUploadBusy(false);
     }
@@ -2347,7 +2355,7 @@ export default function App() {
     } catch (error) {
       console.error("Error clearing movie requests:", error);
       setEventUploadMessageTone("error");
-      setEventUploadMessage(error.message || "Failed to clear movie requests.");
+      setEventUploadMessage("Failed to clear movie requests.");
     } finally {
       setEventUploadBusy(false);
     }
@@ -2386,7 +2394,7 @@ export default function App() {
     } catch (error) {
       console.error('Error updating event live status:', error);
       setEventUploadMessageTone("error");
-      setEventUploadMessage(error.message || "Failed to update live status.");
+      setEventUploadMessage("Failed to update live status.");
     } finally {
       setEventUploadBusy(false);
     }
@@ -2441,7 +2449,7 @@ export default function App() {
     } catch (error) {
       console.error("Failed to upload Lurked Tweaks:", error);
       setLurkedTweaksMessageTone("error");
-      setLurkedTweaksMessage(error.message || "Failed to upload file.");
+      setLurkedTweaksMessage("Failed to upload file.");
     } finally {
       setLurkedTweaksBusy(false);
     }

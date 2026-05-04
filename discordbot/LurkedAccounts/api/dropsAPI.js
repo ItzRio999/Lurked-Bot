@@ -140,7 +140,7 @@ router.post('/upload-drop', uploadLimiter, verifyAuth, verifyAdmin, upload.singl
 
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to upload drop'
+      error: 'Failed to upload drop. Try again.'
     });
   }
 });

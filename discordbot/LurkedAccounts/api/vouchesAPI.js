@@ -103,7 +103,7 @@ router.post('/vouches/backup', verifyAuth, verifyAdmin, async (req, res) => {
     res.json({ success: true, message: `Backed up ${vouches.length} vouches`, backed_up_at, total: vouches.length });
   } catch (error) {
     console.error('❌ Error backing up vouches:', error);
-    res.status(500).json({ success: false, error: 'Backup failed: ' + error.message });
+    res.status(500).json({ success: false, error: 'Backup failed. Please try again.' });
   }
 });
 
@@ -135,7 +135,7 @@ router.post('/vouches/restore', verifyAuth, verifyAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error restoring vouches:', error);
-    res.status(500).json({ success: false, error: 'Restore failed: ' + error.message });
+    res.status(500).json({ success: false, error: 'Restore failed. Please try again.' });
   }
 });
 

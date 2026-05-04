@@ -124,10 +124,10 @@ router.use('/tweaks/upload', (err, req, res, next) => {
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({ success: false, error: 'File too large. Maximum size is 200MB.' });
     }
-    return res.status(400).json({ success: false, error: err.message });
+    return res.status(400).json({ success: false, error: 'File upload failed. Try again.' });
   }
   if (err) {
-    return res.status(400).json({ success: false, error: err.message });
+    return res.status(400).json({ success: false, error: 'File upload failed. Try again.' });
   }
   next();
 });

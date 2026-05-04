@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import {
-  createUserWithEmailAndPassword,
   onAuthStateChanged,
   sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
+  signInWithCustomToken,
   signOut,
   updateProfile,
 } from "firebase/auth";
@@ -32,7 +32,7 @@ import {
   toFriendlyAuthError,
 } from "./utils/auth";
 import { detectDeviceProfile } from "./utils/deviceProfile";
-import { runRecaptchaCheck } from "./utils/recaptcha";
+import { executeRecaptcha, runRecaptchaCheck } from "./utils/recaptcha";
 import { getNextOrderIndex, recalculateOrderIndexes, sortThreadsByPinnedAndOrder } from "./utils/threadOrdering";
 import BackgroundGlow from "./components/layout/BackgroundGlow";
 import Footer from "./components/layout/Footer";
@@ -1500,17 +1500,21 @@ export default function App() {
     }
     setAuthBusy(true);
     try {
-      const recaptchaAction =
-        authMode === "signup" ? "auth_signup" : "auth_signin";
-      await runRecaptchaCheck(recaptchaAction);
-
       if (authMode === "signup") {
-        await createUserWithEmailAndPassword(
-          auth,
-          trimmedEmail,
-          trimmedPassword
-        );
+        // Signup goes through the backend so reCAPTCHA verification and account
+        // creation are atomic — the two steps cannot be decoupled by an attacker.
+        const captchaToken = await executeRecaptcha("auth_signup");
+        const apiBase = import.meta.env.VITE_FILE_SERVER_URL || "http://localhost:3002";
+        const res = await fetch(`${apiBase}/api/auth/signup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: trimmedEmail, password: trimmedPassword, captchaToken }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Signup failed. Please try again.");
+        await signInWithCustomToken(auth, data.customToken);
       } else {
+        await runRecaptchaCheck("auth_signin");
         await signInWithEmailAndPassword(auth, trimmedEmail, trimmedPassword);
       }
       closeAuth();

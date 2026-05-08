@@ -148,6 +148,10 @@ export default function App() {
     currentUser?.email &&
       adminEmails.includes(currentUser.email.toLowerCase())
   );
+  const getVerificationActionSettings = () => ({
+    url: `${window.location.origin}${window.location.pathname}#settings`,
+    handleCodeInApp: false,
+  });
 
   // Check if current page requires Discord linking
   const requiresDiscord = (page) => {
@@ -497,6 +501,7 @@ export default function App() {
         if (data.success) {
           const items = data.drops.map((drop) => ({
             id: drop.id,
+            attachmentId: drop.attachmentId || null,
             title: drop.title || "Untitled drop",
             description: drop.description || "",
             type: drop.type || "drop",
@@ -550,6 +555,7 @@ export default function App() {
             // Add new drop at the beginning
             return [{
               id: newDrop.id,
+              attachmentId: newDrop.attachmentId || null,
               title: newDrop.title || "Untitled drop",
               description: newDrop.description || "",
               type: newDrop.type || "drop",
@@ -1520,7 +1526,14 @@ export default function App() {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Signup failed. Please try again.");
-        await signInWithCustomToken(auth, data.customToken);
+        const credential = await signInWithCustomToken(auth, data.customToken);
+        try {
+          await sendEmailVerification(credential.user, getVerificationActionSettings());
+          setProfileMessage("Account created. Verification email sent.");
+        } catch (verificationError) {
+          console.error("Failed to send signup verification email:", verificationError);
+          setProfileMessage("Account created. Use Send Verification Email from Settings.");
+        }
       } else {
         await runRecaptchaCheck("auth_signin");
         await signInWithEmailAndPassword(auth, trimmedEmail, trimmedPassword);
@@ -1596,16 +1609,18 @@ export default function App() {
     if (!currentUser || profileBusy) {
       return;
     }
-    if (currentUser.emailVerified) {
-      setProfileMessage("Email already verified.");
-      return;
-    }
     setProfileBusy(true);
     setProfileMessage("");
     try {
-      await sendEmailVerification(currentUser);
-      setProfileMessage("Verification email sent.");
+      await currentUser.reload();
+      if (currentUser.emailVerified) {
+        setProfileMessage("Email already verified.");
+        return;
+      }
+      await sendEmailVerification(currentUser, getVerificationActionSettings());
+      setProfileMessage(`Verification email sent to ${currentUser.email}.`);
     } catch (error) {
+      console.error("Failed to send verification email:", error);
       setProfileMessage(toFriendlyAuthError(error));
     } finally {
       setProfileBusy(false);
@@ -2629,6 +2644,7 @@ export default function App() {
         onProfileToggle={handleProfileToggle}
         onProfileClose={handleProfileClose}
         onSignOut={handleSignOut}
+        onVerifyEmail={handleVerifyEmail}
         discordProfile={discordProfile ?? (cachedAvatarUrl ? { avatarUrl: cachedAvatarUrl } : null)}
         onAuthOpen={openAuth}
         authButtonClass={authButtonClass}
@@ -2658,6 +2674,7 @@ export default function App() {
         authPrimaryButtonClass={authPrimaryButtonClass}
         onVerifyEmail={handleVerifyEmail}
         profileBusy={profileBusy}
+        profileMessage={profileMessage}
         isAdmin={isAdmin}
         onDropSubmit={handleDropSubmit}
         dropTitle={dropTitle}

@@ -39,6 +39,88 @@ const upload = multer({
   }
 });
 
+const getSafeDownloadName = (name) => {
+  return String(name || 'download.txt').replace(/["\r\n]/g, '_');
+};
+
+const downloadDropAttachment = async (req, res) => {
+  try {
+    const { dropId, attachmentId } = req.params; // dropId is the Discord message ID
+    const requestedAttachmentId = attachmentId || req.query.attachmentId;
+    const client = req.app.locals.client;
+    const config = req.app.locals.config;
+
+    if (!client || !client.isReady()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Discord bot not ready'
+      });
+    }
+
+    // Fetch Discord channel
+    const channel = await client.channels.fetch(config.drops_channel_id);
+
+    if (!channel) {
+      return res.status(500).json({
+        success: false,
+        error: 'Drops channel not found'
+      });
+    }
+
+    // Fetch the specific message
+    const message = await channel.messages.fetch(dropId);
+
+    if (!message) {
+      return res.status(404).json({
+        success: false,
+        error: 'Drop not found'
+      });
+    }
+
+    const txtAttachments = message.attachments.filter(att =>
+      att.name && att.name.toLowerCase().endsWith('.txt')
+    );
+    const txtAttachment = requestedAttachmentId
+      ? txtAttachments.get(requestedAttachmentId)
+      : txtAttachments.first();
+
+    if (!txtAttachment) {
+      return res.status(404).json({
+        success: false,
+        error: 'File not found'
+      });
+    }
+
+    // Fetch file content from Discord CDN
+    const fetch = require('node-fetch');
+    const fileResponse = await fetch(txtAttachment.url);
+
+    if (!fileResponse.ok) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch file from Discord'
+      });
+    }
+
+    const fileBuffer = await fileResponse.buffer();
+    const downloadName = getSafeDownloadName(txtAttachment.name);
+
+    // Send file as download
+    res.setHeader('Content-Type', 'text/plain');
+    res.setHeader('Content-Disposition', `attachment; filename="${downloadName}"`);
+    res.send(fileBuffer);
+
+    console.log(`Downloaded: ${downloadName} (Message ID: ${dropId}, Attachment ID: ${txtAttachment.id})`);
+
+  } catch (error) {
+    console.error('Error downloading drop:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to download file'
+    });
+  }
+};
+
 // POST /api/upload-drop - Upload drop to Discord channel
 router.post('/upload-drop', uploadLimiter, verifyAuth, verifyAdmin, upload.single('file'), async (req, res) => {
   try {
@@ -248,80 +330,11 @@ router.get('/drops', async (req, res) => {
   }
 });
 
-// GET /api/download/:dropId - Download drop from Discord
-router.get('/download/:dropId', async (req, res) => {
-  try {
-    const { dropId } = req.params; // This is the Discord message ID
-    const client = req.app.locals.client;
-    const config = req.app.locals.config;
+// GET /api/download/:dropId/:attachmentId - Download a specific Discord attachment
+router.get('/download/:dropId/:attachmentId', downloadDropAttachment);
 
-    if (!client || !client.isReady()) {
-      return res.status(503).json({
-        success: false,
-        error: 'Discord bot not ready'
-      });
-    }
-
-    // Fetch Discord channel
-    const channel = await client.channels.fetch(config.drops_channel_id);
-
-    if (!channel) {
-      return res.status(500).json({
-        success: false,
-        error: 'Drops channel not found'
-      });
-    }
-
-    // Fetch the specific message
-    const message = await channel.messages.fetch(dropId);
-
-    if (!message) {
-      return res.status(404).json({
-        success: false,
-        error: 'Drop not found'
-      });
-    }
-
-    // Find .txt attachment
-    const txtAttachment = message.attachments.find(att =>
-      att.name && att.name.toLowerCase().endsWith('.txt')
-    );
-
-    if (!txtAttachment) {
-      return res.status(404).json({
-        success: false,
-        error: 'File not found'
-      });
-    }
-
-    // Fetch file content from Discord CDN
-    const fetch = require('node-fetch');
-    const fileResponse = await fetch(txtAttachment.url);
-
-    if (!fileResponse.ok) {
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to fetch file from Discord'
-      });
-    }
-
-    const fileBuffer = await fileResponse.buffer();
-
-    // Send file as download
-    res.setHeader('Content-Type', 'text/plain');
-    res.setHeader('Content-Disposition', `attachment; filename="${txtAttachment.name}"`);
-    res.send(fileBuffer);
-
-    console.log(`📥 Downloaded: ${txtAttachment.name} (Message ID: ${dropId})`);
-
-  } catch (error) {
-    console.error('❌ Error downloading drop:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to download file'
-    });
-  }
-});
+// GET /api/download/:dropId - Backwards-compatible route for older links
+router.get('/download/:dropId', downloadDropAttachment);
 
 // DELETE /api/drop/:dropId - Delete drop from Discord
 router.delete('/drop/:dropId', deleteLimiter, verifyAuth, verifyAdmin, async (req, res) => {

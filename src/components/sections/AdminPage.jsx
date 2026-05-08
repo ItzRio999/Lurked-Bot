@@ -927,20 +927,20 @@ export default function AdminPage({
                   <div className="space-y-2 max-h-[500px] overflow-y-auto">
                     {drops.map((drop) => (
                       <div
-                        key={drop.id}
-                        className="flex items-center justify-between rounded-xl bg-white/[0.03] border border-white/5 px-4 py-3 group"
+                        key={`${drop.id}-${drop.attachmentId || drop.fileName || drop.title}`}
+                        className="flex items-start justify-between rounded-xl bg-white/[0.03] border border-white/5 px-4 py-3 group min-w-0"
                       >
                         <div className="flex-1 min-w-0 mr-3">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm text-white font-medium truncate">
+                          <div className="flex items-start gap-2">
+                            <p className="text-sm text-white font-medium break-words [overflow-wrap:anywhere]">
                               {sanitizeHTML(drop.title)}
                             </p>
-                            <span className="text-[10px] uppercase tracking-wider text-slate-500 bg-white/5 px-2 py-0.5 rounded-md flex-shrink-0">
+                            <span className="max-w-[45%] text-[10px] uppercase tracking-wider text-slate-500 bg-white/5 px-2 py-0.5 rounded-md flex-shrink-0 break-words text-right [overflow-wrap:anywhere]">
                               {sanitizeHTML(drop.type)}
                             </span>
                           </div>
                           {drop.description && (
-                            <p className="text-xs text-slate-400 truncate mt-0.5">
+                            <p className="text-xs text-slate-400 mt-0.5 break-words [overflow-wrap:anywhere]">
                               {sanitizeHTML(drop.description)}
                             </p>
                           )}

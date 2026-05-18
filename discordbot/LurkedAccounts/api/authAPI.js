@@ -6,7 +6,7 @@ const router = express.Router();
 
 const RECAPTCHA_VERIFY_URL =
   "https://www.google.com/recaptcha/api/siteverify";
-const DEFAULT_MIN_SCORE = 0.5;
+const DEFAULT_MIN_SCORE = 0.1;
 const ALLOWED_ACTIONS = new Set([
   "auth_signin",
   "auth_signup",

@@ -1680,8 +1680,8 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
           "**To get started:** press our website link below, sign up, and link your Discord account.",
           "That gives you access to drops and our events like movie nights, game nights, and more, all free.",
           "",
-          "🌐 **Website:** [Click Here](https://lurkedaccounts.tech/)",
-          "📋 **Click to copy:** `https://lurkedaccounts.tech/`",
+          "🌐 **Website:** [Click Here](https://lurkedaccounts.netlify.app/)",
+          "📋 **Click to copy:** `https://lurkedaccounts.netlify.app/`",
           "",
           "Enjoy the forums, and make a ticket if you have any questions.",
           "",
@@ -1696,7 +1696,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
         },
         {
           name: "Quick Copy",
-          value: "```https://lurkedaccounts.tech/```",
+          value: "```https://lurkedaccounts.netlify.app/```",
           inline: true,
         }
       )

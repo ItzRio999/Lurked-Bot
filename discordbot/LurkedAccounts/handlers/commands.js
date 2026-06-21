@@ -709,6 +709,12 @@ const commands = [
         .setDescription("Secondary image URL shown as thumbnail (optional)")
         .setRequired(false)
     )
+    .addStringOption(opt =>
+      opt
+        .setName("message_id")
+        .setDescription("Existing website embed message ID to edit instead of posting a new one")
+        .setRequired(false)
+    )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
 
   // ============== INVITE TRACKING ==============

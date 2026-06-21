@@ -1628,6 +1628,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
 
     const image1 = interaction.options.getString("image1");
     const image2 = interaction.options.getString("image2");
+    const messageId = interaction.options.getString("message_id");
 
     const parseOptionalImageUrl = (value) => {
       if (!value) return null;
@@ -1678,12 +1679,13 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
           "Welcome to **LurkedAccounts**. We aim to provide as many services as possible for *completely free*, and we do this on our website.",
           "",
           "**To get started:** press our website link below, sign up, and link your Discord account.",
-          "That gives you access to drops and our events like movie nights, game nights, and more, all free.",
+          "That gives you access to drops, forums, Lurked Tweaks, and community events like movie nights and game nights.",
           "",
           "🌐 **Website:** [Click Here](https://lurkedaccounts.netlify.app/)",
           "📋 **Click to copy:** `https://lurkedaccounts.netlify.app/`",
           "",
-          "Enjoy the forums, and make a ticket if you have any questions.",
+          "This is our temporary website domain while we finish moving hosts.",
+          "Enjoy the site, and make a ticket if you have any questions.",
           "",
           "🛡️ **LurkedAccounts does NOT log any information.**",
         ].join("\n")
@@ -1708,6 +1710,32 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
     }
     if (secondaryImageUrl) {
       websiteEmbed.setThumbnail(secondaryImageUrl);
+    }
+
+    if (messageId) {
+      const existingMessage = await websiteChannel.messages
+        .fetch(messageId.trim())
+        .catch(() => null);
+
+      if (!existingMessage) {
+        const missingMessageEmbed = addLogo(
+          new EmbedBuilder()
+            .setDescription(`âŒ I could not find message ID \`${messageId}\` in <#${WEBSITE_CHANNEL_ID}>.`)
+            .setColor(0xED4245),
+          config
+        );
+        return interaction.reply({ embeds: [missingMessageEmbed], flags: MessageFlags.Ephemeral });
+      }
+
+      await existingMessage.edit({ embeds: [websiteEmbed] });
+
+      const editedEmbed = addLogo(
+        new EmbedBuilder()
+          .setDescription(`âœ… Website embed updated in <#${WEBSITE_CHANNEL_ID}>.`)
+          .setColor(0x57F287),
+        config
+      );
+      return interaction.reply({ embeds: [editedEmbed], flags: MessageFlags.Ephemeral });
     }
 
     await websiteChannel.send({ embeds: [websiteEmbed] });

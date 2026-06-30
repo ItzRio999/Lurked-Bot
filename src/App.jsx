@@ -1745,8 +1745,8 @@ export default function App() {
     setProfileOpen(false);
   };
 
-  const handleUsernameInputChange = (event) => {
-    setUsernameInput(event.target.value);
+  const handleUsernameInputChange = (value) => {
+    setUsernameInput(value);
   };
 
   const handleDropTitleChange = (event) => {
@@ -2749,6 +2749,7 @@ export default function App() {
       <AdminPage
         activePage={activePage}
         isAdmin={isAdmin}
+        currentUser={currentUser}
         adminEmails={adminEmails}
         adminEmailInput={adminEmailInput}
         onAdminEmailInputChange={handleAdminEmailInputChange}
@@ -2850,6 +2851,7 @@ export default function App() {
         onClose={closeAuth}
         onSubmit={handleAuthSubmit}
         onPasswordReset={handleAuthPasswordReset}
+        onSwitchMode={(mode) => setAuthMode(mode)}
       />
     </>
   );

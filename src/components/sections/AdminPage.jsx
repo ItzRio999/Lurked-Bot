@@ -1,9 +1,10 @@
 import { sanitizeHTML } from "../../utils/sanitize";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 
 export default function AdminPage({
   activePage,
   isAdmin,
+  currentUser,
   adminEmails,
   adminEmailInput,
   onAdminEmailInputChange,
@@ -120,6 +121,112 @@ export default function AdminPage({
   const [logFilterAdmin, setLogFilterAdmin] = useState("all");
   const [logFilterDateRange, setLogFilterDateRange] = useState("all");
   const [logDisplayLimit, setLogDisplayLimit] = useState(20);
+
+  // ── Verification management state ──────────────────────────────────────────
+  const [verifSearchEmail, setVerifSearchEmail] = useState("");
+  const [verifLookupBusy, setVerifLookupBusy] = useState(false);
+  const [verifLookupResult, setVerifLookupResult] = useState(null);
+  const [verifLookupError, setVerifLookupError] = useState("");
+  const [verifActionBusy, setVerifActionBusy] = useState(false);
+  const [verifActionMsg, setVerifActionMsg] = useState("");
+  const [verifActionTone, setVerifActionTone] = useState("success");
+  const [verifOverrides, setVerifOverrides] = useState([]);
+  const [verifOverridesLoading, setVerifOverridesLoading] = useState(false);
+
+  const apiBase = import.meta.env.VITE_FILE_SERVER_URL || "http://localhost:3002";
+
+  const getToken = useCallback(async () => {
+    if (!currentUser) return null;
+    return currentUser.getIdToken();
+  }, [currentUser]);
+
+  const loadVerifOverrides = useCallback(async () => {
+    if (!currentUser) return;
+    setVerifOverridesLoading(true);
+    try {
+      const token = await getToken();
+      const res = await fetch(`${apiBase}/api/admin/verification/overrides`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success) setVerifOverrides(data.overrides || []);
+    } catch (_) {}
+    setVerifOverridesLoading(false);
+  }, [currentUser, apiBase, getToken]);
+
+  useEffect(() => {
+    if (activeTab === "verification") loadVerifOverrides();
+  }, [activeTab, loadVerifOverrides]);
+
+  const handleVerifLookup = async (e) => {
+    e.preventDefault();
+    if (!verifSearchEmail.trim()) return;
+    setVerifLookupBusy(true);
+    setVerifLookupResult(null);
+    setVerifLookupError("");
+    setVerifActionMsg("");
+    try {
+      const token = await getToken();
+      const res = await fetch(`${apiBase}/api/admin/verification/lookup`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ email: verifSearchEmail.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setVerifLookupResult(data.user);
+      } else {
+        setVerifLookupError(data.error || "User not found");
+      }
+    } catch (_) {
+      setVerifLookupError("Failed to contact server");
+    }
+    setVerifLookupBusy(false);
+  };
+
+  const handleVerifAction = async (action) => {
+    if (!verifLookupResult) return;
+    setVerifActionBusy(true);
+    setVerifActionMsg("");
+    try {
+      const token = await getToken();
+      const res = await fetch(
+        `${apiBase}/api/admin/verification/${verifLookupResult.uid}/${action}`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const data = await res.json();
+      if (data.success) {
+        setVerifActionTone("success");
+        const labels = {
+          "grant-email": "Email verification granted.",
+          "revoke-email": "Email verification revoked.",
+          "grant-discord": "Discord verification granted.",
+          "revoke-discord": "Discord verification revoked.",
+        };
+        setVerifActionMsg(labels[action] || "Done.");
+        // Re-lookup to refresh status
+        const res2 = await fetch(`${apiBase}/api/admin/verification/lookup`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ email: verifLookupResult.email }),
+        });
+        const data2 = await res2.json();
+        if (data2.success) setVerifLookupResult(data2.user);
+        loadVerifOverrides();
+      } else {
+        setVerifActionTone("error");
+        setVerifActionMsg(data.error || "Action failed.");
+      }
+    } catch (_) {
+      setVerifActionTone("error");
+      setVerifActionMsg("Failed to contact server.");
+    }
+    setVerifActionBusy(false);
+  };
+  // ────────────────────────────────────────────────────────────────────────────
 
   // Extract unique action types and admins for filter dropdowns
   const uniqueActionTypes = useMemo(() => {
@@ -241,72 +348,28 @@ export default function AdminPage({
         </div>
 
         {/* Tab Selector */}
-        <div className="glass-panel rounded-2xl border border-white/10 p-2 mb-6">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setActiveTab("overview")}
-              className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
-                activeTab === "overview"
-                  ? "bg-violet-500/20 border border-violet-500/30 text-violet-300"
-                  : "text-slate-400 hover:text-white hover:bg-white/5"
-              }`}
-            >
-              <iconify-icon
-                icon="solar:chart-linear"
-                width="16"
-                height="16"
-                className="inline-block align-middle mr-2 -mt-0.5"
-              ></iconify-icon>
-              Overview
-            </button>
-            <button
-              onClick={() => setActiveTab("drops")}
-              className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
-                activeTab === "drops"
-                  ? "bg-violet-500/20 border border-violet-500/30 text-violet-300"
-                  : "text-slate-400 hover:text-white hover:bg-white/5"
-              }`}
-            >
-              <iconify-icon
-                icon="solar:box-linear"
-                width="16"
-                height="16"
-                className="inline-block align-middle mr-2 -mt-0.5"
-              ></iconify-icon>
-              Drops Management
-            </button>
-            <button
-              onClick={() => setActiveTab("events")}
-              className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
-                activeTab === "events"
-                  ? "bg-violet-500/20 border border-violet-500/30 text-violet-300"
-                  : "text-slate-400 hover:text-white hover:bg-white/5"
-              }`}
-            >
-              <iconify-icon
-                icon="solar:calendar-mark-linear"
-                width="16"
-                height="16"
-                className="inline-block align-middle mr-2 -mt-0.5"
-              ></iconify-icon>
-              Events Management
-            </button>
-            <button
-              onClick={() => setActiveTab("tweaks")}
-              className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
-                activeTab === "tweaks"
-                  ? "bg-violet-500/20 border border-violet-500/30 text-violet-300"
-                  : "text-slate-400 hover:text-white hover:bg-white/5"
-              }`}
-            >
-              <iconify-icon
-                icon="solar:tuning-2-linear"
-                width="16"
-                height="16"
-                className="inline-block align-middle mr-2 -mt-0.5"
-              ></iconify-icon>
-              Lurked Tweaks
-            </button>
+        <div className="glass-panel rounded-2xl border border-white/10 p-2 mb-6 w-fit overflow-x-auto scrollbar-hide">
+          <div className="flex gap-1.5">
+            {[
+              { id: "overview", label: "Overview", icon: "solar:chart-linear" },
+              { id: "drops", label: "Drops", icon: "solar:box-linear" },
+              { id: "events", label: "Events", icon: "solar:calendar-mark-linear" },
+              { id: "tweaks", label: "Lurked Tweaks", icon: "solar:tuning-2-linear" },
+              { id: "verification", label: "Verification", icon: "solar:shield-check-linear" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 whitespace-nowrap ${
+                  activeTab === tab.id
+                    ? "bg-violet-500/20 border border-violet-500/30 text-violet-300"
+                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <iconify-icon icon={tab.icon} width="16" height="16"></iconify-icon>
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -1545,6 +1608,229 @@ export default function AdminPage({
                   >
                     {lurkedTweaksMessage}
                   </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        {/* Verification Management Tab */}
+        {activeTab === "verification" && (
+          <div className="space-y-6">
+            {/* Lookup Card */}
+            <div className="glass-panel rounded-2xl border border-white/10 p-6">
+              <h2 className="text-lg font-medium text-white mb-1 flex items-center gap-2">
+                <iconify-icon icon="solar:shield-check-linear" width="20" height="20" className="text-violet-400"></iconify-icon>
+                Verification Management
+              </h2>
+              <p className="text-xs text-slate-500 mb-6">
+                Look up a user by email to grant or revoke email / Discord verification status.
+              </p>
+
+              <form onSubmit={handleVerifLookup} className="flex gap-3 mb-6">
+                <input
+                  type="email"
+                  value={verifSearchEmail}
+                  onChange={(e) => setVerifSearchEmail(e.target.value)}
+                  placeholder="user@example.com"
+                  className="flex-1 rounded-xl bg-black/60 border border-white/10 px-4 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/40"
+                  required
+                />
+                <button
+                  type="submit"
+                  disabled={verifLookupBusy}
+                  className="rounded-xl bg-violet-500/20 border border-violet-500/30 px-5 py-2.5 text-sm font-medium text-violet-300 hover:bg-violet-500/30 transition-all disabled:opacity-50 flex items-center gap-2"
+                >
+                  {verifLookupBusy ? (
+                    <iconify-icon icon="solar:refresh-circle-linear" width="16" height="16" className="animate-spin"></iconify-icon>
+                  ) : (
+                    <iconify-icon icon="solar:magnifer-linear" width="16" height="16"></iconify-icon>
+                  )}
+                  Look up
+                </button>
+              </form>
+
+              {verifLookupError && (
+                <p className="text-sm text-rose-400 mb-4">{verifLookupError}</p>
+              )}
+
+              {verifLookupResult && (
+                <div className="rounded-xl border border-white/10 bg-black/30 p-5 space-y-5">
+                  {/* User Info */}
+                  <div className="flex items-center gap-3">
+                    {verifLookupResult.photoURL ? (
+                      <img src={verifLookupResult.photoURL} className="w-10 h-10 rounded-full object-cover" alt="" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
+                        <iconify-icon icon="solar:user-linear" width="18" height="18" className="text-violet-400"></iconify-icon>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-sm font-medium text-white">{verifLookupResult.displayName || verifLookupResult.email}</p>
+                      <p className="text-xs text-slate-500">{verifLookupResult.uid}</p>
+                    </div>
+                  </div>
+
+                  {/* Status Rows */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Email Verification */}
+                    <div className="rounded-xl border border-white/10 bg-black/20 p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Email Verified</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${
+                          verifLookupResult.emailVerified
+                            ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                            : "text-rose-400 bg-rose-500/10 border-rose-500/20"
+                        }`}>
+                          {verifLookupResult.emailVerified ? "Verified" : "Not verified"}
+                        </span>
+                      </div>
+                      {verifLookupResult.emailAdminGranted && (
+                        <p className="text-[10px] text-amber-400">
+                          Admin granted by {verifLookupResult.emailGrantedBy}
+                          {verifLookupResult.emailGrantedAt && ` · ${new Date(verifLookupResult.emailGrantedAt).toLocaleDateString()}`}
+                        </p>
+                      )}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleVerifAction("grant-email")}
+                          disabled={verifActionBusy || verifLookupResult.emailVerified}
+                          className="flex-1 rounded-lg bg-emerald-500/15 border border-emerald-500/25 px-3 py-1.5 text-xs font-medium text-emerald-400 hover:bg-emerald-500/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          Grant
+                        </button>
+                        <button
+                          onClick={() => handleVerifAction("revoke-email")}
+                          disabled={verifActionBusy || !verifLookupResult.emailVerified}
+                          className="flex-1 rounded-lg bg-rose-500/15 border border-rose-500/25 px-3 py-1.5 text-xs font-medium text-rose-400 hover:bg-rose-500/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          Revoke
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Discord Verification */}
+                    <div className="rounded-xl border border-white/10 bg-black/20 p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Discord Linked</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${
+                          verifLookupResult.discordLinked
+                            ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                            : "text-rose-400 bg-rose-500/10 border-rose-500/20"
+                        }`}>
+                          {verifLookupResult.discordLinked
+                            ? (verifLookupResult.discordAdminGranted ? "Granted" : `@${verifLookupResult.discordUsername || "linked"}`)
+                            : "Not linked"}
+                        </span>
+                      </div>
+                      {verifLookupResult.discordAdminGranted && (
+                        <p className="text-[10px] text-amber-400">
+                          Admin granted by {verifLookupResult.discordGrantedBy}
+                          {verifLookupResult.discordGrantedAt && ` · ${new Date(verifLookupResult.discordGrantedAt).toLocaleDateString()}`}
+                        </p>
+                      )}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleVerifAction("grant-discord")}
+                          disabled={verifActionBusy || (verifLookupResult.discordLinked && !verifLookupResult.discordAdminGranted)}
+                          className="flex-1 rounded-lg bg-emerald-500/15 border border-emerald-500/25 px-3 py-1.5 text-xs font-medium text-emerald-400 hover:bg-emerald-500/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          Grant
+                        </button>
+                        <button
+                          onClick={() => handleVerifAction("revoke-discord")}
+                          disabled={verifActionBusy || !verifLookupResult.discordLinked}
+                          className="flex-1 rounded-lg bg-rose-500/15 border border-rose-500/25 px-3 py-1.5 text-xs font-medium text-rose-400 hover:bg-rose-500/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          Revoke
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action feedback */}
+                  {verifActionMsg && (
+                    <div className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm ${
+                      verifActionTone === "error"
+                        ? "bg-rose-500/10 border border-rose-500/20 text-rose-300"
+                        : "bg-emerald-500/10 border border-emerald-500/20 text-emerald-300"
+                    }`}>
+                      <iconify-icon
+                        icon={verifActionTone === "error" ? "solar:danger-triangle-linear" : "solar:check-circle-linear"}
+                        width="16" height="16"
+                      ></iconify-icon>
+                      {verifActionMsg}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Overrides List */}
+            <div className="glass-panel rounded-2xl border border-white/10 p-6">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-base font-medium text-white flex items-center gap-2">
+                  <iconify-icon icon="solar:users-group-two-rounded-linear" width="18" height="18" className="text-amber-400"></iconify-icon>
+                  Admin-Granted Verifications
+                  {verifOverrides.length > 0 && (
+                    <span className="text-xs text-slate-500 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full">
+                      {verifOverrides.length}
+                    </span>
+                  )}
+                </h2>
+                <button
+                  onClick={loadVerifOverrides}
+                  disabled={verifOverridesLoading}
+                  className="text-slate-500 hover:text-white transition-colors"
+                  title="Refresh"
+                >
+                  <iconify-icon
+                    icon="solar:refresh-linear"
+                    width="16" height="16"
+                    className={verifOverridesLoading ? "animate-spin" : ""}
+                  ></iconify-icon>
+                </button>
+              </div>
+
+              {verifOverridesLoading ? (
+                <div className="text-center py-8 text-slate-500 text-sm">Loading...</div>
+              ) : verifOverrides.length === 0 ? (
+                <div className="text-center py-8 text-slate-600 text-sm">No admin-granted verifications yet.</div>
+              ) : (
+                <div className="space-y-3">
+                  {verifOverrides.map((ov) => (
+                    <div key={ov.uid} className="flex items-center gap-4 rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                      <div className="w-8 h-8 rounded-full bg-violet-500/20 border border-violet-500/30 flex items-center justify-center flex-shrink-0">
+                        <iconify-icon icon="solar:user-linear" width="14" height="14" className="text-violet-400"></iconify-icon>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-white truncate">{ov.email || ov.uid}</p>
+                        <p className="text-[10px] text-slate-600 font-mono truncate">{ov.uid}</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {ov.emailGranted && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                            Email
+                          </span>
+                        )}
+                        {ov.discordGranted && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+                            Discord
+                          </span>
+                        )}
+                        <button
+                          onClick={() => {
+                            setVerifSearchEmail(ov.email || "");
+                            setVerifLookupResult(null);
+                            setVerifActionMsg("");
+                          }}
+                          className="text-slate-600 hover:text-violet-400 transition-colors ml-1"
+                          title="Load this user"
+                        >
+                          <iconify-icon icon="solar:arrow-right-linear" width="14" height="14"></iconify-icon>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

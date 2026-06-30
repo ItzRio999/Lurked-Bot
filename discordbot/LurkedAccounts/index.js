@@ -276,6 +276,11 @@ client.on("clientReady", async () => {
   app.use('/api', vouchesAPI);
   console.log('✅ Vouches API routes loaded');
 
+  // Load Admin Verification API routes
+  const adminVerificationAPI = require('./api/adminVerificationAPI');
+  app.use('/api/admin/verification', adminVerificationAPI);
+  console.log('✅ Admin Verification API routes loaded');
+
   // Load Auth API routes
   const authAPI = require('./api/authAPI');
   app.use('/api', authAPI);

@@ -53,13 +53,7 @@ async function showEmbedModal(interaction) {
     .setCustomId("embed_description")
     .setLabel("Description — Supports Discord Markdown")
     .setStyle(TextInputStyle.Paragraph)
-    .setPlaceholder(
-      "Write your message here.\n\n" +
-      "**Bold**  *Italic*  __Underline__  ~~Strike~~\n" +
-      "`Code`  ||Spoiler||  > Quote\n" +
-      "# Heading  ## Subheading\n" +
-      "@everyone  @here  <#channel-id>  <t:TIMESTAMP:R>"
-    )
+    .setPlaceholder("**Bold** *Italic* __Underline__ ~~Strike~~ `Code` ||Spoiler|| > Quote  # Heading  /embed format for help")
     .setRequired(true)
     .setMaxLength(4000);
 
@@ -181,14 +175,7 @@ async function showAdvancedEmbedModal(interaction) {
     .setCustomId("embed_description")
     .setLabel("Description — Supports Discord Markdown")
     .setStyle(TextInputStyle.Paragraph)
-    .setPlaceholder(
-      "Write your message here.\n\n" +
-      "**Bold**  *Italic*  __Underline__  ~~Strike~~\n" +
-      "`Code`  ||Spoiler||  > Quote\n" +
-      "# Heading  ## Subheading  ### Small\n" +
-      "Timestamps: <t:1735689600:F>  <t:1735689600:R>\n" +
-      "Mentions: @everyone  @here  <#channel>  <@&role>"
-    )
+    .setPlaceholder("**Bold** *Italic* __Underline__ ~~Strike~~ `Code` ||Spoiler|| > Quote  # Heading  /embed format for help")
     .setRequired(true)
     .setMaxLength(4000);
 
@@ -196,13 +183,7 @@ async function showAdvancedEmbedModal(interaction) {
     .setCustomId("embed_fields")
     .setLabel("Advanced Fields (JSON) — optional")
     .setStyle(TextInputStyle.Paragraph)
-    .setPlaceholder(
-      '[\n' +
-      '  { "name": "Downloads", "value": "https://lurkedaccounts.tech", "inline": true },\n' +
-      '  { "name": "Status", "value": "Online ✅", "inline": true },\n' +
-      '  { "name": "Version", "value": "v1.2.0", "inline": false }\n' +
-      ']'
-    )
+    .setPlaceholder('[{"name":"Status","value":"Online ✅","inline":true},{"name":"Version","value":"v1.2.0","inline":true}]')
     .setRequired(false)
     .setMaxLength(1000);
 

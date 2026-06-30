@@ -870,8 +870,8 @@ const commands = [
       sub
         .setName("grant")
         .setDescription("Grant website verification to a user")
-        .addUserOption(opt =>
-          opt.setName("user").setDescription("Discord user to verify").setRequired(true)
+        .addStringOption(opt =>
+          opt.setName("identifier").setDescription("User's website email address or Firebase UID").setRequired(true)
         )
         .addStringOption(opt =>
           opt
@@ -889,8 +889,8 @@ const commands = [
       sub
         .setName("revoke")
         .setDescription("Revoke website verification from a user")
-        .addUserOption(opt =>
-          opt.setName("user").setDescription("Discord user to unverify").setRequired(true)
+        .addStringOption(opt =>
+          opt.setName("identifier").setDescription("User's website email address or Firebase UID").setRequired(true)
         )
         .addStringOption(opt =>
           opt
@@ -908,8 +908,8 @@ const commands = [
       sub
         .setName("status")
         .setDescription("Check a user's website verification status")
-        .addUserOption(opt =>
-          opt.setName("user").setDescription("Discord user to check").setRequired(true)
+        .addStringOption(opt =>
+          opt.setName("identifier").setDescription("User's website email address or Firebase UID").setRequired(true)
         )
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),

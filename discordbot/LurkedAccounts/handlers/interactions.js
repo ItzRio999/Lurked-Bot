@@ -1812,6 +1812,202 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
     return restoreVouches(interaction, data, dataPath);
   }
 
+  // ============== WEBSITE VERIFICATION OVERRIDE ==============
+  if (name === "webverify") {
+    const admin = require("firebase-admin");
+    const subcommand = interaction.options.getSubcommand();
+    const targetUser = interaction.options.getUser("user", true);
+    const type = interaction.options.getString("type");
+    const OVERRIDES_COLLECTION = "verificationOverrides";
+
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+    // Helper: find Firebase UID by Discord ID
+    const findFirebaseUid = async (discordId) => {
+      const firestore = admin.firestore();
+      // Query all users whose discord/profile doc has this discordId
+      const snap = await firestore.collectionGroup("discord").where("discordId", "==", discordId).limit(1).get();
+      if (!snap.empty) {
+        // Path is users/{uid}/discord/profile — parent.parent.id is the uid
+        return snap.docs[0].ref.parent.parent.id;
+      }
+      return null;
+    };
+
+    const grantEmail = async (uid) => {
+      await admin.auth().updateUser(uid, { emailVerified: true });
+      await admin.firestore().collection(OVERRIDES_COLLECTION).doc(uid).set(
+        { emailGranted: true, emailGrantedAt: admin.firestore.FieldValue.serverTimestamp(), emailGrantedBy: interaction.user.tag, uid },
+        { merge: true }
+      );
+    };
+
+    const revokeEmail = async (uid) => {
+      await admin.auth().updateUser(uid, { emailVerified: false });
+      await admin.firestore().collection(OVERRIDES_COLLECTION).doc(uid).set(
+        { emailGranted: false, emailGrantedAt: null, emailGrantedBy: null },
+        { merge: true }
+      );
+    };
+
+    const grantDiscord = async (uid) => {
+      await admin.firestore().collection("users").doc(uid).collection("discord").doc("profile").set({
+        discordId: `admin_granted_${uid}`,
+        username: "admin_granted",
+        discriminator: "0",
+        globalName: "Admin Granted",
+        avatar: null,
+        avatarUrl: null,
+        adminGranted: true,
+        adminGrantedBy: interaction.user.tag,
+        linkedAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      await admin.firestore().collection(OVERRIDES_COLLECTION).doc(uid).set(
+        { discordGranted: true, discordGrantedAt: admin.firestore.FieldValue.serverTimestamp(), discordGrantedBy: interaction.user.tag, uid },
+        { merge: true }
+      );
+    };
+
+    const revokeDiscord = async (uid) => {
+      await admin.firestore().collection("users").doc(uid).collection("discord").doc("profile").delete();
+      await admin.firestore().collection(OVERRIDES_COLLECTION).doc(uid).set(
+        { discordGranted: false, discordGrantedAt: null, discordGrantedBy: null },
+        { merge: true }
+      );
+    };
+
+    const logAction = async (action, uid) => {
+      await admin.firestore().collection("adminLogs").add({
+        action: "Verification Override",
+        details: `${action} for Discord user ${targetUser.tag} (${targetUser.id}) — UID: ${uid}`,
+        adminEmail: interaction.user.tag,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    };
+
+    if (subcommand === "status") {
+      const uid = await findFirebaseUid(targetUser.id);
+      if (!uid) {
+        const embed = addLogo(
+          new EmbedBuilder()
+            .setDescription(`❌ No website account found linked to <@${targetUser.id}>.\nThey need to link their Discord on the website first, or use \`/webverify grant\` with type \`discord\` to grant it without linking.`)
+            .setColor(0xED4245),
+          config
+        );
+        return interaction.editReply({ embeds: [embed] });
+      }
+
+      const [userRecord, discordDoc, overrideDoc] = await Promise.all([
+        admin.auth().getUser(uid),
+        admin.firestore().collection("users").doc(uid).collection("discord").doc("profile").get(),
+        admin.firestore().collection(OVERRIDES_COLLECTION).doc(uid).get(),
+      ]);
+
+      const override = overrideDoc.exists ? overrideDoc.data() : {};
+      const discordData = discordDoc.exists ? discordDoc.data() : null;
+
+      const embed = addLogo(
+        new EmbedBuilder()
+          .setTitle(`Website Verification — ${targetUser.tag}`)
+          .setThumbnail(targetUser.displayAvatarURL())
+          .addFields(
+            { name: "Firebase UID", value: `\`${uid}\``, inline: false },
+            { name: "Website Email", value: userRecord.email || "Unknown", inline: true },
+            {
+              name: "Email Verified",
+              value: userRecord.emailVerified
+                ? `✅ Yes${override.emailGranted ? " *(admin granted)*" : ""}`
+                : "❌ No",
+              inline: true,
+            },
+            {
+              name: "Discord Linked",
+              value: discordDoc.exists
+                ? discordData?.adminGranted
+                  ? `✅ Admin granted`
+                  : `✅ @${discordData?.username || "linked"}`
+                : "❌ Not linked",
+              inline: true,
+            }
+          )
+          .setColor(0x5865F2),
+        config
+      );
+      return interaction.editReply({ embeds: [embed] });
+    }
+
+    if (subcommand === "grant") {
+      // For discord grant we don't need a pre-existing link — we'll create it.
+      // For email grant we need the UID, try discord lookup first.
+      let uid = await findFirebaseUid(targetUser.id);
+
+      // If no UID found and we're only granting discord, we can't proceed without a Firebase account
+      if (!uid) {
+        const embed = addLogo(
+          new EmbedBuilder()
+            .setDescription(`❌ No website account found linked to <@${targetUser.id}>.\nThe user needs to create an account on the website first. You can then look them up by UID from the admin dashboard.`)
+            .setColor(0xED4245),
+          config
+        );
+        return interaction.editReply({ embeds: [embed] });
+      }
+
+      const results = [];
+      if (type === "email" || type === "both") {
+        await grantEmail(uid);
+        results.push("✅ Email verification granted");
+      }
+      if (type === "discord" || type === "both") {
+        await grantDiscord(uid);
+        results.push("✅ Discord verification granted");
+      }
+      await logAction(`Granted ${type} verification`, uid);
+
+      const embed = addLogo(
+        new EmbedBuilder()
+          .setTitle("Verification Granted")
+          .setDescription(`${results.join("\n")}\n\n**User:** <@${targetUser.id}> (${targetUser.tag})`)
+          .setColor(0x57F287),
+        config
+      );
+      return interaction.editReply({ embeds: [embed] });
+    }
+
+    if (subcommand === "revoke") {
+      const uid = await findFirebaseUid(targetUser.id);
+      if (!uid) {
+        const embed = addLogo(
+          new EmbedBuilder()
+            .setDescription(`❌ No website account found linked to <@${targetUser.id}>.`)
+            .setColor(0xED4245),
+          config
+        );
+        return interaction.editReply({ embeds: [embed] });
+      }
+
+      const results = [];
+      if (type === "email" || type === "both") {
+        await revokeEmail(uid);
+        results.push("🔴 Email verification revoked");
+      }
+      if (type === "discord" || type === "both") {
+        await revokeDiscord(uid);
+        results.push("🔴 Discord verification revoked");
+      }
+      await logAction(`Revoked ${type} verification`, uid);
+
+      const embed = addLogo(
+        new EmbedBuilder()
+          .setTitle("Verification Revoked")
+          .setDescription(`${results.join("\n")}\n\n**User:** <@${targetUser.id}> (${targetUser.tag})`)
+          .setColor(0xED4245),
+        config
+      );
+      return interaction.editReply({ embeds: [embed] });
+    }
+  }
+
 }
 
 module.exports = { handleInteraction };

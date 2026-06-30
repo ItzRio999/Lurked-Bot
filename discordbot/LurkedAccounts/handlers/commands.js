@@ -862,6 +862,58 @@ const commands = [
     .setDescription("Restore vouches from the latest Firebase Firestore backup")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
+  // ============== WEBSITE VERIFICATION OVERRIDE ==============
+  new SlashCommandBuilder()
+    .setName("webverify")
+    .setDescription("Grant or revoke website verification for a user (email and/or Discord linking)")
+    .addSubcommand(sub =>
+      sub
+        .setName("grant")
+        .setDescription("Grant website verification to a user")
+        .addUserOption(opt =>
+          opt.setName("user").setDescription("Discord user to verify").setRequired(true)
+        )
+        .addStringOption(opt =>
+          opt
+            .setName("type")
+            .setDescription("What to grant")
+            .setRequired(true)
+            .addChoices(
+              { name: "Email verification", value: "email" },
+              { name: "Discord link", value: "discord" },
+              { name: "Both", value: "both" }
+            )
+        )
+    )
+    .addSubcommand(sub =>
+      sub
+        .setName("revoke")
+        .setDescription("Revoke website verification from a user")
+        .addUserOption(opt =>
+          opt.setName("user").setDescription("Discord user to unverify").setRequired(true)
+        )
+        .addStringOption(opt =>
+          opt
+            .setName("type")
+            .setDescription("What to revoke")
+            .setRequired(true)
+            .addChoices(
+              { name: "Email verification", value: "email" },
+              { name: "Discord link", value: "discord" },
+              { name: "Both", value: "both" }
+            )
+        )
+    )
+    .addSubcommand(sub =>
+      sub
+        .setName("status")
+        .setDescription("Check a user's website verification status")
+        .addUserOption(opt =>
+          opt.setName("user").setDescription("Discord user to check").setRequired(true)
+        )
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
   // ============== STICKY MESSAGE ==============
   new SlashCommandBuilder()
     .setName("stickymessage")

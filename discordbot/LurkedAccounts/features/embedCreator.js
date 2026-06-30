@@ -53,7 +53,7 @@ async function showEmbedModal(interaction) {
     .setCustomId("embed_description")
     .setLabel("Description — Supports Discord Markdown")
     .setStyle(TextInputStyle.Paragraph)
-    .setPlaceholder("**Bold** *Italic* __Underline__ ~~Strike~~ `Code` ||Spoiler|| > Quote  # Heading  /embed format for help")
+    .setPlaceholder("**bold** *italic* __underline__ ~~strike~~ `code` ||spoiler|| > quote · # heading")
     .setRequired(true)
     .setMaxLength(4000);
 
@@ -175,7 +175,7 @@ async function showAdvancedEmbedModal(interaction) {
     .setCustomId("embed_description")
     .setLabel("Description — Supports Discord Markdown")
     .setStyle(TextInputStyle.Paragraph)
-    .setPlaceholder("**Bold** *Italic* __Underline__ ~~Strike~~ `Code` ||Spoiler|| > Quote  # Heading  /embed format for help")
+    .setPlaceholder("**bold** *italic* __underline__ ~~strike~~ `code` ||spoiler|| > quote · # heading")
     .setRequired(true)
     .setMaxLength(4000);
 
@@ -183,7 +183,7 @@ async function showAdvancedEmbedModal(interaction) {
     .setCustomId("embed_fields")
     .setLabel("Advanced Fields (JSON) — optional")
     .setStyle(TextInputStyle.Paragraph)
-    .setPlaceholder('[{"name":"Status","value":"Online ✅","inline":true},{"name":"Version","value":"v1.2.0","inline":true}]')
+    .setPlaceholder('[{"name":"Status","value":"Online ✅","inline":true},{"name":"Ver","value":"v1.2","inline":true}]')
     .setRequired(false)
     .setMaxLength(1000);
 

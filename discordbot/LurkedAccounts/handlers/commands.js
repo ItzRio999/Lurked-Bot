@@ -683,7 +683,7 @@ const commands = [
     .addSubcommand(sub =>
       sub
         .setName("advanced")
-        .setDescription("Create an advanced embed with fields")
+        .setDescription("Create an advanced embed with fields, thumbnail, and more")
         .addChannelOption(opt =>
           opt
             .setName("channel")
@@ -691,6 +691,16 @@ const commands = [
             .addChannelTypes(ChannelType.GuildText)
             .setRequired(false)
         )
+    )
+    .addSubcommand(sub =>
+      sub
+        .setName("format")
+        .setDescription("Show a full Discord markdown & formatting cheat sheet")
+    )
+    .addSubcommand(sub =>
+      sub
+        .setName("timestamp")
+        .setDescription("Generate Discord timestamp codes for the current time")
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
 

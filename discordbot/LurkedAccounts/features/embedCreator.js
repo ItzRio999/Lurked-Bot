@@ -1,342 +1,454 @@
 const { EmbedBuilder, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionFlagsBits, MessageFlags } = require("discord.js");
 
+const NAMED_COLORS = {
+  blurple: 0x5865F2,
+  red: 0xED4245,
+  green: 0x57F287,
+  yellow: 0xFEE75C,
+  orange: 0xE67E22,
+  purple: 0x9B59B6,
+  pink: 0xEB459E,
+  teal: 0x1ABC9C,
+  blue: 0x3498DB,
+  white: 0xFFFFFF,
+  black: 0x000001,
+  gold: 0xF1C40F,
+  navy: 0x34495E,
+  default: 0x522081,
+};
+
+function parseColor(input) {
+  if (!input) return NAMED_COLORS.default;
+  const lower = input.trim().toLowerCase();
+  if (NAMED_COLORS[lower] !== undefined) return NAMED_COLORS[lower];
+  const clean = lower.replace("#", "");
+  const parsed = parseInt(clean, 16);
+  if (!isNaN(parsed) && parsed >= 0 && parsed <= 0xFFFFFF) return parsed;
+  return null; // invalid
+}
+
+function isValidUrl(str) {
+  try { new URL(str); return true; } catch { return false; }
+}
+
 /**
- * Show the embed creation modal
+ * /embed create — basic embed modal
  */
 async function showEmbedModal(interaction) {
   const channelId = interaction.options.getChannel("channel")?.id || interaction.channelId;
 
   const modal = new ModalBuilder()
     .setCustomId(`embed_create_${channelId}`)
-    .setTitle("Create Custom Embed");
+    .setTitle("Send Embed to Channel");
 
-  // Title input
   const titleInput = new TextInputBuilder()
     .setCustomId("embed_title")
-    .setLabel("Embed Title")
+    .setLabel("Title (optional)")
     .setStyle(TextInputStyle.Short)
-    .setPlaceholder("Enter embed title (optional)")
+    .setPlaceholder("📢 Patch Notes v1.4.2")
     .setRequired(false)
     .setMaxLength(256);
 
-  // Description input
   const descriptionInput = new TextInputBuilder()
     .setCustomId("embed_description")
-    .setLabel("Embed Description")
+    .setLabel("Description — Supports Discord Markdown")
     .setStyle(TextInputStyle.Paragraph)
-    .setPlaceholder("Enter embed description")
+    .setPlaceholder(
+      "Write your message here.\n\n" +
+      "**Bold**  *Italic*  __Underline__  ~~Strike~~\n" +
+      "`Code`  ||Spoiler||  > Quote\n" +
+      "# Heading  ## Subheading\n" +
+      "@everyone  @here  <#channel-id>  <t:TIMESTAMP:R>"
+    )
     .setRequired(true)
     .setMaxLength(4000);
 
-  // Color input
   const colorInput = new TextInputBuilder()
     .setCustomId("embed_color")
-    .setLabel("Embed Color (hex code)")
+    .setLabel("Color — Name or HEX (optional)")
     .setStyle(TextInputStyle.Short)
-    .setPlaceholder("#5865F2 or 5865F2")
+    .setPlaceholder("blurple · red · green · gold · purple · #FF5733")
     .setRequired(false)
-    .setMaxLength(7);
+    .setMaxLength(20);
 
-  // Footer input
   const footerInput = new TextInputBuilder()
     .setCustomId("embed_footer")
-    .setLabel("Footer Text")
+    .setLabel("Footer Text (optional)")
     .setStyle(TextInputStyle.Short)
-    .setPlaceholder("Enter footer text (optional)")
+    .setPlaceholder("LurkedAccounts · Posted by Staff")
     .setRequired(false)
     .setMaxLength(2048);
 
-  // Image URL input
   const imageInput = new TextInputBuilder()
     .setCustomId("embed_image")
-    .setLabel("Image URL")
+    .setLabel("Image URL (optional) — shown below description")
     .setStyle(TextInputStyle.Short)
-    .setPlaceholder("https://example.com/image.png (optional)")
+    .setPlaceholder("https://example.com/banner.png")
     .setRequired(false)
     .setMaxLength(500);
 
-  // Add inputs to action rows
-  const row1 = new ActionRowBuilder().addComponents(titleInput);
-  const row2 = new ActionRowBuilder().addComponents(descriptionInput);
-  const row3 = new ActionRowBuilder().addComponents(colorInput);
-  const row4 = new ActionRowBuilder().addComponents(footerInput);
-  const row5 = new ActionRowBuilder().addComponents(imageInput);
-
-  modal.addComponents(row1, row2, row3, row4, row5);
+  modal.addComponents(
+    new ActionRowBuilder().addComponents(titleInput),
+    new ActionRowBuilder().addComponents(descriptionInput),
+    new ActionRowBuilder().addComponents(colorInput),
+    new ActionRowBuilder().addComponents(footerInput),
+    new ActionRowBuilder().addComponents(imageInput),
+  );
 
   await interaction.showModal(modal);
 }
 
 /**
- * Handle embed creation modal submission
+ * Handle basic embed submission
  */
 async function handleEmbedSubmit(interaction, config) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-  // Extract channel ID from custom ID
+
   const channelId = interaction.customId.replace("embed_create_", "");
   const channel = interaction.guild.channels.cache.get(channelId);
 
   if (!channel) {
-    return interaction.editReply({
-      content: "❌ Could not find the target channel!",
-    });
+    return interaction.editReply({ content: "❌ Could not find the target channel." });
   }
 
-  // Check if bot has permission to send messages in the channel
   const botMember = interaction.guild.members.me;
   if (!channel.permissionsFor(botMember).has(PermissionFlagsBits.SendMessages)) {
-    return interaction.editReply({
-      content: `❌ I don't have permission to send messages in ${channel}!`,
-    });
+    return interaction.editReply({ content: `❌ I don't have permission to send messages in ${channel}.` });
   }
 
-  // Get modal inputs
   const title = interaction.fields.getTextInputValue("embed_title");
   const description = interaction.fields.getTextInputValue("embed_description");
-  const colorInput = interaction.fields.getTextInputValue("embed_color");
+  const colorRaw = interaction.fields.getTextInputValue("embed_color");
   const footer = interaction.fields.getTextInputValue("embed_footer");
   const imageUrl = interaction.fields.getTextInputValue("embed_image");
 
-  // Parse color
-  let color = 0x522081; // Default Discord blue
-  if (colorInput) {
-    const cleanColor = colorInput.replace("#", "");
-    const parsedColor = parseInt(cleanColor, 16);
-    if (!isNaN(parsedColor) && parsedColor >= 0 && parsedColor <= 0xFFFFFF) {
-      color = parsedColor;
-    }
+  const color = parseColor(colorRaw);
+  if (colorRaw && color === null) {
+    return interaction.editReply({
+      content: `❌ Invalid color \`${colorRaw}\`. Use a name (blurple, red, green, gold…) or a HEX code like \`#5865F2\`.`,
+    });
   }
 
-  // Build the embed
+  if (imageUrl && !isValidUrl(imageUrl)) {
+    return interaction.editReply({
+      content: `❌ Invalid image URL. Make sure it starts with \`https://\` and points directly to an image.`,
+    });
+  }
+
   const embed = new EmbedBuilder()
     .setDescription(description)
-    .setColor(color);
+    .setColor(color ?? NAMED_COLORS.default)
+    .setTimestamp();
 
   if (title) embed.setTitle(title);
   if (footer) embed.setFooter({ text: footer });
-  if (imageUrl) {
-    // Validate URL
-    try {
-      new URL(imageUrl);
-      embed.setImage(imageUrl);
-    } catch (e) {
-      // Invalid URL, skip
-    }
-  }
-
-  // Add timestamp
-  embed.setTimestamp();
+  if (imageUrl) embed.setImage(imageUrl);
 
   try {
-    // Send the embed
     await channel.send({ embeds: [embed] });
 
-    // Confirm to user
-    const confirmEmbed = new EmbedBuilder()
-      .setDescription(`✅ Embed sent successfully to ${channel}!`)
+    const confirm = new EmbedBuilder()
+      .setDescription(`✅ Embed sent to ${channel}!`)
       .setColor(0x57F287);
+    if (config.logo_url) confirm.setThumbnail(config.logo_url);
 
-    if (config.logo_url) {
-      confirmEmbed.setThumbnail(config.logo_url);
-    }
-
-    await interaction.editReply({ embeds: [confirmEmbed] });
+    await interaction.editReply({ embeds: [confirm] });
   } catch (error) {
     console.error("Error sending embed:", error);
-    return interaction.editReply({
-      content: `❌ Failed to send embed: ${error.message}`,
-    });
+    return interaction.editReply({ content: `❌ Failed to send embed: ${error.message}` });
   }
 }
 
 /**
- * Show advanced embed creation modal with fields
+ * /embed advanced — full embed modal
  */
 async function showAdvancedEmbedModal(interaction) {
   const channelId = interaction.options.getChannel("channel")?.id || interaction.channelId;
 
   const modal = new ModalBuilder()
     .setCustomId(`embed_advanced_${channelId}`)
-    .setTitle("Create Advanced Embed");
+    .setTitle("Send Advanced Embed");
 
-  // Title input
   const titleInput = new TextInputBuilder()
     .setCustomId("embed_title")
-    .setLabel("Embed Title")
+    .setLabel("Title (optional, max 256 chars)")
     .setStyle(TextInputStyle.Short)
-    .setPlaceholder("Enter embed title (optional)")
+    .setPlaceholder("📢 Announcement · 🛠️ Update · ⭐ Event")
     .setRequired(false)
     .setMaxLength(256);
 
-  // Description input
   const descriptionInput = new TextInputBuilder()
     .setCustomId("embed_description")
-    .setLabel("Embed Description")
+    .setLabel("Description — Supports Discord Markdown")
     .setStyle(TextInputStyle.Paragraph)
-    .setPlaceholder("Enter embed description")
+    .setPlaceholder(
+      "Write your message here.\n\n" +
+      "**Bold**  *Italic*  __Underline__  ~~Strike~~\n" +
+      "`Code`  ||Spoiler||  > Quote\n" +
+      "# Heading  ## Subheading  ### Small\n" +
+      "Timestamps: <t:1735689600:F>  <t:1735689600:R>\n" +
+      "Mentions: @everyone  @here  <#channel>  <@&role>"
+    )
     .setRequired(true)
     .setMaxLength(4000);
 
-  // Fields input (JSON format)
   const fieldsInput = new TextInputBuilder()
     .setCustomId("embed_fields")
-    .setLabel("Fields (JSON format)")
+    .setLabel("Advanced Fields (JSON) — optional")
     .setStyle(TextInputStyle.Paragraph)
-    .setPlaceholder('[{"name":"Field 1","value":"Value 1","inline":true}]')
+    .setPlaceholder(
+      '[\n' +
+      '  { "name": "Downloads", "value": "https://lurkedaccounts.tech", "inline": true },\n' +
+      '  { "name": "Status", "value": "Online ✅", "inline": true },\n' +
+      '  { "name": "Version", "value": "v1.2.0", "inline": false }\n' +
+      ']'
+    )
     .setRequired(false)
     .setMaxLength(1000);
 
-  // Color and Footer
   const colorFooterInput = new TextInputBuilder()
     .setCustomId("embed_color_footer")
-    .setLabel("Color | Footer (separated by |)")
+    .setLabel("Color | Footer Text (separate with |)")
     .setStyle(TextInputStyle.Short)
-    .setPlaceholder("#5865F2 | Footer text")
+    .setPlaceholder("blurple | Posted by Staff · or · #5865F2 | Footer here")
     .setRequired(false)
     .setMaxLength(300);
 
-  // Image and Thumbnail URLs
   const imagesInput = new TextInputBuilder()
     .setCustomId("embed_images")
-    .setLabel("Image URL | Thumbnail URL (separated by |)")
+    .setLabel("Image URL | Thumbnail URL (separate with |)")
     .setStyle(TextInputStyle.Short)
-    .setPlaceholder("https://image.png | https://thumb.png")
+    .setPlaceholder("https://example.com/banner.png | https://example.com/icon.png")
     .setRequired(false)
     .setMaxLength(500);
 
-  const row1 = new ActionRowBuilder().addComponents(titleInput);
-  const row2 = new ActionRowBuilder().addComponents(descriptionInput);
-  const row3 = new ActionRowBuilder().addComponents(fieldsInput);
-  const row4 = new ActionRowBuilder().addComponents(colorFooterInput);
-  const row5 = new ActionRowBuilder().addComponents(imagesInput);
-
-  modal.addComponents(row1, row2, row3, row4, row5);
+  modal.addComponents(
+    new ActionRowBuilder().addComponents(titleInput),
+    new ActionRowBuilder().addComponents(descriptionInput),
+    new ActionRowBuilder().addComponents(colorFooterInput),
+    new ActionRowBuilder().addComponents(imagesInput),
+    new ActionRowBuilder().addComponents(fieldsInput),
+  );
 
   await interaction.showModal(modal);
 }
 
 /**
- * Handle advanced embed creation modal submission
+ * Handle advanced embed submission
  */
 async function handleAdvancedEmbedSubmit(interaction, config) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
   const channelId = interaction.customId.replace("embed_advanced_", "");
   const channel = interaction.guild.channels.cache.get(channelId);
 
   if (!channel) {
-    return interaction.editReply({
-      content: "❌ Could not find the target channel!",
-    });
+    return interaction.editReply({ content: "❌ Could not find the target channel." });
   }
 
   const botMember = interaction.guild.members.me;
   if (!channel.permissionsFor(botMember).has(PermissionFlagsBits.SendMessages)) {
-    return interaction.editReply({
-      content: `❌ I don't have permission to send messages in ${channel}!`,
-    });
+    return interaction.editReply({ content: `❌ I don't have permission to send messages in ${channel}.` });
   }
 
-  // Get modal inputs
   const title = interaction.fields.getTextInputValue("embed_title");
   const description = interaction.fields.getTextInputValue("embed_description");
-  const fieldsInput = interaction.fields.getTextInputValue("embed_fields");
-  const colorFooterInput = interaction.fields.getTextInputValue("embed_color_footer");
-  const imagesInput = interaction.fields.getTextInputValue("embed_images");
+  const fieldsRaw = interaction.fields.getTextInputValue("embed_fields");
+  const colorFooterRaw = interaction.fields.getTextInputValue("embed_color_footer");
+  const imagesRaw = interaction.fields.getTextInputValue("embed_images");
 
   // Parse color and footer
-  let color = 0x522081;
+  let colorInput = "";
   let footer = "";
-  if (colorFooterInput) {
-    const parts = colorFooterInput.split("|").map(s => s.trim());
-    if (parts[0]) {
-      const cleanColor = parts[0].replace("#", "");
-      const parsedColor = parseInt(cleanColor, 16);
-      if (!isNaN(parsedColor) && parsedColor >= 0 && parsedColor <= 0xFFFFFF) {
-        color = parsedColor;
-      }
-    }
-    if (parts[1]) {
-      footer = parts[1];
-    }
+  if (colorFooterRaw) {
+    const parts = colorFooterRaw.split("|").map(s => s.trim());
+    colorInput = parts[0] || "";
+    footer = parts[1] || "";
+  }
+
+  const color = parseColor(colorInput);
+  if (colorInput && color === null) {
+    return interaction.editReply({
+      content: `❌ Invalid color \`${colorInput}\`. Use a name (blurple, red, green, gold…) or a HEX code like \`#5865F2\`.`,
+    });
   }
 
   // Parse images
   let imageUrl = "";
   let thumbnailUrl = "";
-  if (imagesInput) {
-    const parts = imagesInput.split("|").map(s => s.trim());
+  if (imagesRaw) {
+    const parts = imagesRaw.split("|").map(s => s.trim());
     imageUrl = parts[0] || "";
     thumbnailUrl = parts[1] || "";
   }
 
-  // Build the embed
-  const embed = new EmbedBuilder()
-    .setDescription(description)
-    .setColor(color);
-
-  if (title) embed.setTitle(title);
-  if (footer) embed.setFooter({ text: footer });
-
-  // Add image and thumbnail
-  if (imageUrl) {
-    try {
-      new URL(imageUrl);
-      embed.setImage(imageUrl);
-    } catch (e) {}
+  const errors = [];
+  if (imageUrl && !isValidUrl(imageUrl)) errors.push(`❌ Invalid image URL: \`${imageUrl}\``);
+  if (thumbnailUrl && !isValidUrl(thumbnailUrl)) errors.push(`❌ Invalid thumbnail URL: \`${thumbnailUrl}\``);
+  if (errors.length) {
+    return interaction.editReply({
+      content: errors.join("\n") + "\nMake sure URLs start with `https://`.",
+    });
   }
 
-  if (thumbnailUrl) {
+  // Parse fields JSON
+  let parsedFields = [];
+  if (fieldsRaw) {
     try {
-      new URL(thumbnailUrl);
-      embed.setThumbnail(thumbnailUrl);
-    } catch (e) {}
-  }
-
-  // Parse and add fields
-  if (fieldsInput) {
-    try {
-      const fields = JSON.parse(fieldsInput);
-      if (Array.isArray(fields)) {
-        for (const field of fields.slice(0, 25)) { // Max 25 fields
-          if (field.name && field.value) {
-            embed.addFields({
-              name: field.name.slice(0, 256),
-              value: field.value.slice(0, 1024),
-              inline: field.inline === true
-            });
-          }
-        }
-      }
+      const raw = JSON.parse(fieldsRaw);
+      if (!Array.isArray(raw)) throw new Error("Fields must be a JSON array");
+      parsedFields = raw
+        .slice(0, 25)
+        .filter(f => f.name && f.value)
+        .map(f => ({
+          name: String(f.name).slice(0, 256),
+          value: String(f.value).slice(0, 1024),
+          inline: f.inline === true,
+        }));
     } catch (e) {
-      // Invalid JSON, skip fields
+      return interaction.editReply({
+        content: `❌ Invalid fields JSON.\n\`\`\`\n${e.message}\n\`\`\`\nExample:\n\`\`\`json\n[\n  { "name": "Field", "value": "Value", "inline": true }\n]\`\`\`\nTip: Run \`/embed format\` for a full cheat sheet.`,
+      });
     }
   }
 
-  embed.setTimestamp();
+  const embed = new EmbedBuilder()
+    .setDescription(description)
+    .setColor(color ?? NAMED_COLORS.default)
+    .setTimestamp();
+
+  if (title) embed.setTitle(title);
+  if (footer) embed.setFooter({ text: footer });
+  if (imageUrl) embed.setImage(imageUrl);
+  if (thumbnailUrl) embed.setThumbnail(thumbnailUrl);
+  if (parsedFields.length) embed.addFields(parsedFields);
 
   try {
     await channel.send({ embeds: [embed] });
 
-    const confirmEmbed = new EmbedBuilder()
-      .setDescription(`✅ Advanced embed sent successfully to ${channel}!`)
+    const confirm = new EmbedBuilder()
+      .setDescription(`✅ Advanced embed sent to ${channel}!`)
       .setColor(0x57F287);
+    if (config.logo_url) confirm.setThumbnail(config.logo_url);
 
-    if (config.logo_url) {
-      confirmEmbed.setThumbnail(config.logo_url);
-    }
-
-    await interaction.editReply({ embeds: [confirmEmbed] });
+    await interaction.editReply({ embeds: [confirm] });
   } catch (error) {
-    console.error("Error sending embed:", error);
-    return interaction.editReply({
-      content: `❌ Failed to send embed: ${error.message}`,
-    });
+    console.error("Error sending advanced embed:", error);
+    return interaction.editReply({ content: `❌ Failed to send embed: ${error.message}` });
   }
+}
+
+/**
+ * /embed format — markdown & formatting cheat sheet
+ */
+async function showFormatHelp(interaction) {
+  const embed = new EmbedBuilder()
+    .setTitle("📋 Discord Embed Formatting Guide")
+    .setColor(0x5865F2)
+    .setDescription("Everything you can use inside your embed description.")
+    .addFields(
+      {
+        name: "✏️ Text Formatting",
+        value:
+          "`**text**` → **Bold**\n" +
+          "`*text*` → *Italic*\n" +
+          "`__text__` → __Underline__\n" +
+          "`~~text~~` → ~~Strikethrough~~\n" +
+          "`||text||` → ||Spoiler||\n" +
+          "`` `text` `` → `Inline code`",
+        inline: true,
+      },
+      {
+        name: "📐 Structure",
+        value:
+          "`# Heading` → Large heading\n" +
+          "`## Heading` → Medium heading\n" +
+          "`### Heading` → Small heading\n" +
+          "`> text` → Block quote\n" +
+          "`>>> text` → Multi-line quote\n" +
+          "` ```code``` ` → Code block",
+        inline: true,
+      },
+      {
+        name: "🏷️ Mentions & Links",
+        value:
+          "`@everyone` `@here`\n" +
+          "`<#channel-id>` → Channel\n" +
+          "`<@user-id>` → User\n" +
+          "`<@&role-id>` → Role\n" +
+          "`[Text](https://url)` → Masked link",
+        inline: true,
+      },
+      {
+        name: "🕐 Timestamps",
+        value:
+          "Use `/embed timestamp` to generate these:\n" +
+          "`<t:1234567890:t>` → Short time\n" +
+          "`<t:1234567890:D>` → Long date\n" +
+          "`<t:1234567890:F>` → Full date & time\n" +
+          "`<t:1234567890:R>` → Relative (\"2 hours ago\")",
+        inline: false,
+      },
+      {
+        name: "🎨 Color Names",
+        value:
+          "`blurple` `red` `green` `yellow`\n" +
+          "`orange` `purple` `pink` `teal`\n" +
+          "`blue` `gold` `white` `black` `navy`\n" +
+          "Or any HEX: `#5865F2`",
+        inline: true,
+      },
+      {
+        name: "📦 Fields JSON Example",
+        value:
+          "```json\n" +
+          "[\n" +
+          '  { "name": "Status", "value": "Online ✅", "inline": true },\n' +
+          '  { "name": "Version", "value": "v1.2.0", "inline": true }\n' +
+          "]\n```",
+        inline: false,
+      },
+    )
+    .setFooter({ text: "Use /embed create or /embed advanced to build your embed" });
+
+  await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+}
+
+/**
+ * /embed timestamp — generate all Discord timestamp formats for right now
+ */
+async function showTimestampHelper(interaction) {
+  const unix = Math.floor(Date.now() / 1000);
+
+  const formats = [
+    { style: "t", label: "Short Time",     example: "9:41 PM" },
+    { style: "T", label: "Long Time",      example: "9:41:30 PM" },
+    { style: "d", label: "Short Date",     example: "06/30/2026" },
+    { style: "D", label: "Long Date",      example: "June 30, 2026" },
+    { style: "f", label: "Date & Time",    example: "June 30, 2026 9:41 PM" },
+    { style: "F", label: "Full Date/Time", example: "Tuesday, June 30, 2026 9:41 PM" },
+    { style: "R", label: "Relative",       example: "just now / in 2 hours" },
+  ];
+
+  const rows = formats.map(f => {
+    const syntax = `<t:${unix}:${f.style}>`;
+    return `**${f.label}**\n\`${syntax}\` → ${f.example}`;
+  }).join("\n\n");
+
+  const embed = new EmbedBuilder()
+    .setTitle("🕐 Discord Timestamps — Right Now")
+    .setColor(0x5865F2)
+    .setDescription(`Unix timestamp: \`${unix}\`\nCopy any format below and paste into your embed.\n\n${rows}`)
+    .setFooter({ text: "Timestamps display in each user's local timezone automatically" });
+
+  await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
 }
 
 module.exports = {
   showEmbedModal,
   handleEmbedSubmit,
   showAdvancedEmbedModal,
-  handleAdvancedEmbedSubmit
+  handleAdvancedEmbedSubmit,
+  showFormatHelp,
+  showTimestampHelper,
 };

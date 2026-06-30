@@ -19,7 +19,7 @@ const { configureAutomod } = require("../features/automod");
 const { setTicketPriority, addTicketNote, viewTicketNotes, showRatingModal, handleTicketRating, toggleAutoClose, viewTicketStats, renameTicket, setRatingsChannel, addUserToTicket, removeUserFromTicket, listTicketParticipants } = require("../features/ticketEnhancements");
 const { createVerificationPanel, startVerification, handleVerificationAnswer, showVerificationStats, configureVerification, setVerificationChannel, manualVerify, unverifyUser } = require("../features/verification");
 const { showSecurityDashboard, showRecentLogs } = require("../features/securityLogs");
-const { showEmbedModal, handleEmbedSubmit, showAdvancedEmbedModal, handleAdvancedEmbedSubmit } = require("../features/embedCreator");
+const { showEmbedModal, handleEmbedSubmit, showAdvancedEmbedModal, handleAdvancedEmbedSubmit, showFormatHelp, showTimestampHelper } = require("../features/embedCreator");
 const { showInviteStats, showInviteLeaderboard } = require("../features/inviteTracking");
 const { assignTimedRole, removeTimedRole, listTimedRoles } = require("../features/timedRoles");
 const { submitVouch, backupVouches, restoreVouches } = require("../features/vouch");
@@ -513,8 +513,9 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
           name: "📝 Embed Creator",
           value:
             "`/embed create` - Basic embed\n" +
-            "`/embed advanced` - With fields\n" +
-            "**Features:** Color, footer, images",
+            "`/embed advanced` - Fields, images & more\n" +
+            "`/embed format` - Markdown cheat sheet\n" +
+            "`/embed timestamp` - Generate timestamp codes",
           inline: true
         },
         {
@@ -1605,6 +1606,14 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
 
     if (subcommand === "advanced") {
       return showAdvancedEmbedModal(interaction);
+    }
+
+    if (subcommand === "format") {
+      return showFormatHelp(interaction);
+    }
+
+    if (subcommand === "timestamp") {
+      return showTimestampHelper(interaction);
     }
   }
 

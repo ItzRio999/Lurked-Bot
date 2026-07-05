@@ -17,6 +17,8 @@ const TICKET_EMOJI = EMOJIS.ticket;
 const TICKET_WARNING_TEXT =
   `${EMOJIS.warning} Pinging staff results in a warning, and can result in a ban by staff if excessive or asked not to.\n` +
   `${EMOJIS.announcement} tickets auto close after 24 hours if no activity`;
+const CLOSE_REQUEST_AUTO_CLOSE_MS = 5 * 60 * 1000;
+const closeRequestTimers = new Map();
 
 // Default ticket panel configuration
 const DEFAULT_PANEL = {
@@ -92,12 +94,61 @@ function normalizeTicketPanelEmojis(panel) {
   }
 }
 
-function withTicketPanelWarnings(description = "") {
-  const warningLines = `\n\n${TICKET_WARNING_TEXT}`;
-  if (description.includes(EMOJIS.warning) || description.includes(EMOJIS.announcement)) {
-    return description;
+function buildTicketPanelDescription() {
+  return [
+    `${EMOJIS.ticket} **__Welcome to LurkedAccounts Support__**`,
+    "",
+    "We aim to keep support **clear**, **quick**, and **organized** while helping the community as smoothly as possible.",
+    "",
+    `${EMOJIS.pin} **To get started:**`,
+    "> **1.** Select the category that best matches your issue.",
+    "> **2.** Explain what you need in your first message.",
+    "> **3.** Include screenshots, usernames, order details, or error messages when useful.",
+    "",
+    `${EMOJIS.discordDeveloper} **Website:** [Open LurkedAccounts](https://lurkedaccounts.netlify.app/)`,
+    "`https://lurkedaccounts.netlify.app/`",
+  ].join("\n");
+}
+
+function buildTicketCategoryList(panel) {
+  return (panel.buttons || [])
+    .map((button) => `${button.emoji || EMOJIS.ticket} **${button.label}** - ${button.description || "Open a support ticket."}`)
+    .join("\n");
+}
+
+function clearCloseRequestTimer(channelId) {
+  const timer = closeRequestTimers.get(channelId);
+  if (timer) {
+    clearTimeout(timer);
+    closeRequestTimers.delete(channelId);
   }
-  return `${description}${warningLines}`;
+}
+
+function scheduleCloseRequestAutoClose(channel, requestedBy, config, data, dataPath) {
+  clearCloseRequestTimer(channel.id);
+
+  const timer = setTimeout(async () => {
+    closeRequestTimers.delete(channel.id);
+    const ticket = data.tickets?.[channel.id];
+    if (!ticket || ticket.closed) return;
+
+    const autoEmbed = new EmbedBuilder()
+      .setTitle("Ticket Auto-Closing")
+      .setDescription(
+        `${EMOJIS.warning} **__Five minutes have passed since the close request.__**\n\n` +
+        `No additional time was requested, so this ticket is now closing on behalf of ${requestedBy}.\n\n` +
+        "> A transcript will be generated, staff logs will be saved, and the ticket creator can open a new ticket anytime."
+      )
+      .setColor(0x522081)
+      .setFooter({ text: "Thank you for contacting support" })
+      .setTimestamp();
+
+    addLogo(autoEmbed, config);
+    await channel.send({ embeds: [autoEmbed] }).catch(() => {});
+    await closeTicket(channel, requestedBy, config, data, dataPath);
+  }, CLOSE_REQUEST_AUTO_CLOSE_MS);
+
+  closeRequestTimers.set(channel.id, timer);
 }
 
 // Get panel config or create default
@@ -116,7 +167,27 @@ async function createTicketPanel(interaction, config, configPath) {
 
   const embed = new EmbedBuilder()
     .setTitle(panel.title)
-    .setDescription(withTicketPanelWarnings(panel.description))
+    .setDescription(buildTicketPanelDescription())
+    .addFields(
+      {
+        name: `${EMOJIS.report} __Support Categories__`,
+        value: buildTicketCategoryList(panel) || `${EMOJIS.ticket} **General Support** - Open a ticket for general support.`,
+        inline: false
+      },
+      {
+        name: `${EMOJIS.warning} __Before Opening A Ticket__`,
+        value:
+          "> **Do not ping staff.** Pinging staff results in a warning and can result in a ban if excessive or if staff ask you to stop.\n" +
+          `> ${EMOJIS.announcement} Tickets auto close after **24 hours** with no activity.`,
+        inline: false
+      },
+      {
+        name: `${EMOJIS.check} __After Your Ticket Opens__`,
+        value:
+          "A staff member will review your inquiry, claim the ticket when available, and do their best to resolve the issue with you.",
+        inline: false
+      }
+    )
     .setColor(panel.color)
     .setFooter({ text: panel.footer });
 
@@ -435,6 +506,43 @@ async function handleClose(interaction, config, data, dataPath) {
     )
     .setFooter({ text: `Ticket #${ticket.ticket_num} • Only ${interaction.user.tag} can confirm or cancel this request` });
 
+  confirmEmbed
+    .setDescription(
+      `${EMOJIS.ticket} **__A staff member is preparing to close this ticket.__**\n\n` +
+      `> **Requested by:** ${interaction.user}\n` +
+      `> **Ticket:** \`#${String(ticket.ticket_num).padStart(4, "0")}\`\n\n` +
+      "Please send any **final details**, screenshots, or questions here before the ticket closes. " +
+      "*If you need more help later, you can open a new ticket anytime.*"
+    )
+    .setFields(
+      { name: "Requested By", value: `${interaction.user}`, inline: true },
+      { name: "Ticket Creator", value: `<@${ticket.user_id}>`, inline: true },
+      { name: "Handled By", value: handledBy, inline: true },
+      { name: `${EMOJIS.lurk} __Users In This Ticket__`, value: ticketUsers.join("\n"), inline: false },
+      {
+        name: `${EMOJIS.save} __What Happens Next__`,
+        value:
+          "> The channel will be closed and deleted.\n" +
+          "> A transcript will be saved and sent to the ticket creator when DMs allow it.\n" +
+          "> Staff will receive a log copy for records.\n" +
+          "> You may receive a quick feedback survey after closure.",
+        inline: false
+      },
+      {
+        name: `${EMOJIS.check} __Need More Help Later?__`,
+        value: "You are always welcome to open another ticket if you have additional questions or a new inquiry.",
+        inline: false
+      },
+      {
+        name: `${EMOJIS.warning} __Auto-Close Notice__`,
+        value:
+          `This ticket will auto close **5 minutes** from this request if ${interaction.user} does not confirm it first.\n` +
+          "Use that time to send final messages or request additional time.",
+        inline: false
+      }
+    )
+    .setFooter({ text: `Ticket #${ticket.ticket_num} • Only ${interaction.user.tag} can confirm or cancel this request` });
+
   addLogo(confirmEmbed, config);
 
   const confirmRow = new ActionRowBuilder()
@@ -452,6 +560,7 @@ async function handleClose(interaction, config, data, dataPath) {
     );
 
   await interaction.reply({ embeds: [confirmEmbed], components: [confirmRow] });
+  scheduleCloseRequestAutoClose(interaction.channel, interaction.user, config, data, dataPath);
 }
 
 // Handle close confirmation
@@ -466,6 +575,8 @@ async function handleCloseConfirm(interaction, config, data, dataPath) {
       .setColor(0xED4245);
     return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
+
+  clearCloseRequestTimer(interaction.channel.id);
 
   const embed = new EmbedBuilder()
     .setTitle("Ticket Closing")
@@ -498,6 +609,8 @@ async function handleCloseCancel(interaction, config) {
     return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 
+  clearCloseRequestTimer(interaction.channel.id);
+
   const cancelEmbed = new EmbedBuilder()
     .setDescription("❌ Ticket close cancelled.")
     .setColor(0x522081);
@@ -513,6 +626,8 @@ async function handleCloseCancel(interaction, config) {
 async function closeTicket(channel, closedBy, config, data, dataPath) {
   const ticket = data.tickets[channel.id];
   if (!ticket) return null;
+
+  clearCloseRequestTimer(channel.id);
 
   ticket.closed = true;
   ticket.closed_by = closedBy.id;

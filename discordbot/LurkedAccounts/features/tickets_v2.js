@@ -92,6 +92,14 @@ function normalizeTicketPanelEmojis(panel) {
   }
 }
 
+function withTicketPanelWarnings(description = "") {
+  const warningLines = `\n\n${TICKET_WARNING_TEXT}`;
+  if (description.includes(EMOJIS.warning) || description.includes(EMOJIS.announcement)) {
+    return description;
+  }
+  return `${description}${warningLines}`;
+}
+
 // Get panel config or create default
 function getPanelConfig(config) {
   if (!config.ticket_panel) {
@@ -108,7 +116,7 @@ async function createTicketPanel(interaction, config, configPath) {
 
   const embed = new EmbedBuilder()
     .setTitle(panel.title)
-    .setDescription(panel.description)
+    .setDescription(withTicketPanelWarnings(panel.description))
     .setColor(panel.color)
     .setFooter({ text: panel.footer });
 

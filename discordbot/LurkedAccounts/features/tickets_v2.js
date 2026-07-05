@@ -10,6 +10,12 @@ const {
   MessageFlags,
 } = require("discord.js");
 const { saveJson, addLogo } = require("../utils/fileManager");
+const { hasStaffRole, isOwnerOrCoowner } = require("../utils/permissions");
+
+const TICKET_EMOJI = "<:ticket:1523383014648840273>";
+const TICKET_WARNING_TEXT =
+  "<:server_warning3:1438899547098320977> Pinging staff results in a warning, and can result in a ban by staff if excessive or asked not to.\n" +
+  "<:announcement:1523381783507501238> tickets auto close after 24 hours if no activity";
 
 // Default ticket panel configuration
 const DEFAULT_PANEL = {
@@ -32,7 +38,7 @@ const DEFAULT_PANEL = {
     {
       id: "general",
       label: "General Support",
-      emoji: "🎫",
+      emoji: TICKET_EMOJI,
       style: "Primary",
       description: "Open a ticket for general support."
     },
@@ -59,6 +65,16 @@ const DEFAULT_PANEL = {
     }
   ]
 };
+
+function canManageTickets(member, config) {
+  if (!member) return false;
+  return (
+    member.permissions?.has(PermissionFlagsBits.Administrator) ||
+    member.permissions?.has(PermissionFlagsBits.ManageChannels) ||
+    hasStaffRole(member, config) ||
+    isOwnerOrCoowner(member, config)
+  );
+}
 
 // Get panel config or create default
 function getPanelConfig(config) {
@@ -230,7 +246,8 @@ async function createTicketFromButton(interaction, category, config, data, dataP
       .addFields(
         { name: "Category", value: categoryName, inline: true },
         { name: "Opened", value: `<t:${Math.floor(Date.parse(data.tickets[channel.id].created_at) / 1000)}:R>`, inline: true },
-        { name: "User", value: `${interaction.user.tag}`, inline: true }
+        { name: "User", value: `${interaction.user.tag}`, inline: true },
+        { name: "Warnings", value: TICKET_WARNING_TEXT, inline: false }
       )
       .setColor(0x522081)
       .setFooter({ text: "Use the buttons below to manage this ticket" })
@@ -243,7 +260,7 @@ async function createTicketFromButton(interaction, category, config, data, dataP
         .setCustomId("ticket_claim")
         .setLabel("Claim Ticket")
         .setStyle(ButtonStyle.Primary)
-        .setEmoji("✋"),
+        .setEmoji(TICKET_EMOJI),
       new ButtonBuilder()
         .setCustomId("ticket_close")
         .setLabel("Close Ticket")
@@ -280,6 +297,13 @@ async function handleClaim(interaction, data, dataPath, config) {
   const ticket = data.tickets[interaction.channel.id];
   if (!ticket) return;
 
+  if (!canManageTickets(interaction.member, config)) {
+    const embed = new EmbedBuilder()
+      .setDescription("❌ Only admins or staff can claim tickets.")
+      .setColor(0xED4245);
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+  }
+
   if (ticket.claimed_by) {
     const embed = new EmbedBuilder()
       .setDescription(`❌ This ticket is already claimed by <@${ticket.claimed_by}>!`)
@@ -293,7 +317,7 @@ async function handleClaim(interaction, data, dataPath, config) {
 
   const embed = new EmbedBuilder()
     .setTitle("Ticket Claimed")
-    .setDescription(`${interaction.user} has claimed this ticket and will provide support.`)
+    .setDescription(`${interaction.user} has claimed this ticket and will be handling your inquiry. They will try their best to resolve any issues you may have.`)
     .addFields(
       { name: "Claimed By", value: `${interaction.user}`, inline: true },
       { name: "Claimed", value: `<t:${Math.floor(Date.parse(ticket.claimed_at) / 1000)}:R>`, inline: true }
@@ -304,6 +328,25 @@ async function handleClaim(interaction, data, dataPath, config) {
   addLogo(embed, config);
 
   await interaction.reply({ embeds: [embed] });
+}
+
+async function handleCloseTicketCommand(interaction, config, data, dataPath) {
+  if (!canManageTickets(interaction.member, config)) {
+    const embed = new EmbedBuilder()
+      .setDescription("❌ Only admins or staff can close tickets with this command.")
+      .setColor(0xED4245);
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+  }
+
+  const ticket = data.tickets?.[interaction.channel.id];
+  if (!ticket) {
+    const embed = new EmbedBuilder()
+      .setDescription("❌ This command can only be used inside an active ticket channel.")
+      .setColor(0xED4245);
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+  }
+
+  return handleClose(interaction, config, data, dataPath);
 }
 
 async function handleClose(interaction, config, data, dataPath) {
@@ -564,8 +607,10 @@ module.exports = {
   handleClose,
   handleCloseConfirm,
   handleCloseCancel,
+  handleCloseTicketCommand,
   closeTicket,
   logTicketMessage,
   getPanelConfig,
+  canManageTickets,
   DEFAULT_PANEL,
 };

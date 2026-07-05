@@ -10,7 +10,7 @@ const {
 const path = require("path");
 const { isOwnerOrCoowner } = require("../utils/permissions");
 const { saveJson, addLogo } = require("../utils/fileManager");
-const { createTicketPanel, createTicketFromButton, handleClaim, handleClose, handleCloseConfirm, handleCloseCancel, getPanelConfig, DEFAULT_PANEL } = require("../features/tickets_v2");
+const { createTicketPanel, createTicketFromButton, handleClaim, handleClose, handleCloseConfirm, handleCloseCancel, handleCloseTicketCommand, getPanelConfig, DEFAULT_PANEL } = require("../features/tickets_v2");
 const { createPoll } = require("../features/polls");
 const { nukeMessages, timeoutUser, untimeoutUser, kickUser, banUser, softbanUser, unbanUser } = require("../features/moderation");
 const { createRolesPanel, handleRoleButton, getRolesPanelConfig } = require("../features/rolesPanel");
@@ -443,10 +443,11 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
       .setColor(0x522081)
       .addFields(
         {
-          name: "🎫 Support Tickets",
+          name: "<:ticket:1523383014648840273> Support Tickets",
           value:
             "`/ticketpanel` - Post ticket panel\n" +
             "`/ticketsetup` - Configure system\n" +
+            "`/closeticket` - Close current ticket\n" +
             "`/ticketpriority` - Set priority\n" +
             "`/ticketnote` `/ticketnotes` - Staff notes\n" +
             "`/ticketadd` `/ticketremove` - Manage users\n" +
@@ -583,6 +584,10 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
       return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     }
     return showInviteStats(interaction, data, config);
+  }
+
+  if (name === "closeticket") {
+    return handleCloseTicketCommand(interaction, config, data, dataPath);
   }
 
   // ============== OWNER/COOWNER COMMANDS ==============

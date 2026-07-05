@@ -123,6 +123,11 @@ const commands = [
     .setDescription("Post the ticket panel in this channel")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
+  new SlashCommandBuilder()
+    .setName("closeticket")
+    .setDescription("Close the current ticket channel")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
+
   // ============== ROLES PANEL ==============
   new SlashCommandBuilder()
     .setName("rolespanel")

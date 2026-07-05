@@ -357,7 +357,7 @@ client.on("clientReady", async () => {
     { name: "scammers get caught 🎯", type: ActivityType.Playing, state: "Trap Active" },
     { name: "cleanup after raids 🧹", type: ActivityType.Playing, state: "Server Defense" },
     { name: "for bad words 🛡️", type: ActivityType.Watching, state: "Auto-Moderation" },
-    { name: "your support tickets 🎫", type: ActivityType.Watching, state: "Managing Tickets" },
+    { name: "your support tickets <:ticket:1523383014648840273>", type: ActivityType.Watching, state: "Managing Tickets" },
     { name: "to /help ❓", type: ActivityType.Listening, state: "Ready to Assist" },
     { name: `${client.guilds.cache.size} server${client.guilds.cache.size !== 1 ? 's' : ''} 🌐`, type: ActivityType.Watching, state: "Multi-Server" },
     { name: "Made by sxloar <3", type: ActivityType.Playing, state: "Creator Credit" },

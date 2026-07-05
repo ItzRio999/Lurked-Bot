@@ -36,7 +36,7 @@ const EMOJIS = {
   speaker: "<a:speaker:1507293472984666232>",
 
   ticket: "<:ticket:1523383014648840273>",
-  warning: "<:server_warning3:1438899547098320977>",
+  warning: "<:server_warning3:1523387865260888064>",
   announcement: "<:announcement:1523381783507501238>",
 };
 

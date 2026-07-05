@@ -378,6 +378,19 @@ async function handleClose(interaction, config, data, dataPath) {
   const ticket = data.tickets[interaction.channel.id];
   if (!ticket) return;
 
+  if (!canManageTickets(interaction.member, config)) {
+    const embed = new EmbedBuilder()
+      .setDescription(`${EMOJIS.no} Only admins or staff can request ticket closure.`)
+      .setColor(0xED4245);
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+  }
+
+  const ticketUsers = [
+    `<@${ticket.user_id}>`,
+    ...(ticket.added_users || []).map(userId => `<@${userId}>`)
+  ];
+  const handledBy = ticket.claimed_by ? `<@${ticket.claimed_by}>` : "Not claimed yet";
+
   // Show confirmation dialog
   const confirmEmbed = new EmbedBuilder()
     .setTitle("Close Ticket Confirmation")
@@ -393,27 +406,66 @@ async function handleClose(interaction, config, data, dataPath) {
     .setFooter({ text: `Ticket #${ticket.ticket_num}` })
     .setTimestamp();
 
+  confirmEmbed
+    .setTitle("Ticket Close Request")
+    .setDescription(
+      `${EMOJIS.ticket} **A staff member is preparing to close this ticket.**\n\n` +
+      "Before this closes, please send any final details, screenshots, or questions here. " +
+      "If you need more help later, you can open a new ticket anytime."
+    )
+    .setFields(
+      { name: "Requested By", value: `${interaction.user}`, inline: true },
+      { name: "Ticket Creator", value: `<@${ticket.user_id}>`, inline: true },
+      { name: "Handled By", value: handledBy, inline: true },
+      { name: "Users In This Ticket", value: ticketUsers.join("\n"), inline: false },
+      {
+        name: "What Happens Next",
+        value:
+          `${EMOJIS.check} This channel will be closed and deleted.\n` +
+          `${EMOJIS.save} A transcript will be saved and sent to the ticket creator when DMs allow it.\n` +
+          `${EMOJIS.report} Staff will receive a log copy for records.\n` +
+          `${EMOJIS.fire} You may receive a quick feedback survey after closure.`,
+        inline: false
+      },
+      {
+        name: "Need More Help Later?",
+        value: "You are always welcome to open another ticket if you have additional questions or a new inquiry.",
+        inline: false
+      }
+    )
+    .setFooter({ text: `Ticket #${ticket.ticket_num} • Only ${interaction.user.tag} can confirm or cancel this request` });
+
+  addLogo(confirmEmbed, config);
+
   const confirmRow = new ActionRowBuilder()
     .addComponents(
       new ButtonBuilder()
-        .setCustomId("ticket_close_confirm")
+        .setCustomId(`ticket_close_confirm_${interaction.user.id}`)
         .setLabel("Yes, Close Ticket")
         .setStyle(ButtonStyle.Danger)
         .setEmoji(EMOJIS.check),
       new ButtonBuilder()
-        .setCustomId("ticket_close_cancel")
+        .setCustomId(`ticket_close_cancel_${interaction.user.id}`)
         .setLabel("Cancel")
         .setStyle(ButtonStyle.Secondary)
         .setEmoji(EMOJIS.no)
     );
 
-  await interaction.reply({ embeds: [confirmEmbed], components: [confirmRow], flags: MessageFlags.Ephemeral });
+  await interaction.reply({ embeds: [confirmEmbed], components: [confirmRow] });
 }
 
 // Handle close confirmation
 async function handleCloseConfirm(interaction, config, data, dataPath) {
   const ticket = data.tickets[interaction.channel.id];
   if (!ticket) return;
+
+  const requesterId = interaction.customId.split("_").pop();
+  if (requesterId && requesterId !== interaction.user.id) {
+    const embed = new EmbedBuilder()
+      .setDescription(`${EMOJIS.no} Only the staff member who requested this close can use these buttons.`)
+      .setColor(0xED4245);
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+  }
 
   const embed = new EmbedBuilder()
     .setTitle("Ticket Closing")
@@ -422,11 +474,14 @@ async function handleCloseConfirm(interaction, config, data, dataPath) {
     .setFooter({ text: "Thank you for contacting support" })
     .setTimestamp();
 
-  // Update the original ephemeral message
-  await interaction.update({ embeds: [new EmbedBuilder().setDescription(`${EMOJIS.check} Ticket is being closed...`).setColor(0x57F287)], components: [] });
+  embed.setDescription(
+    `${EMOJIS.check} This ticket has been approved for closure by ${interaction.user}.\n\n` +
+    "A transcript will be generated, logs will be saved for staff, and this channel will be deleted in **5 seconds**. " +
+    "You can open another ticket anytime if you need more help."
+  );
+  addLogo(embed, config);
 
-  // Send public message
-  await interaction.channel.send({ embeds: [embed] });
+  await interaction.update({ embeds: [embed], components: [] });
 
   setTimeout(async () => {
     await closeTicket(interaction.channel, interaction.user, config, data, dataPath);
@@ -434,10 +489,23 @@ async function handleCloseConfirm(interaction, config, data, dataPath) {
 }
 
 // Handle close cancellation
-async function handleCloseCancel(interaction) {
+async function handleCloseCancel(interaction, config) {
+  const requesterId = interaction.customId.split("_").pop();
+  if (requesterId && requesterId !== interaction.user.id) {
+    const embed = new EmbedBuilder()
+      .setDescription(`${EMOJIS.no} Only the staff member who requested this close can use these buttons.`)
+      .setColor(0xED4245);
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+  }
+
   const cancelEmbed = new EmbedBuilder()
     .setDescription("❌ Ticket close cancelled.")
     .setColor(0x522081);
+
+  cancelEmbed
+    .setTitle("Ticket Close Cancelled")
+    .setDescription(`${EMOJIS.no} ${interaction.user} cancelled this close request. This ticket will remain open.`);
+  addLogo(cancelEmbed, config);
 
   await interaction.update({ embeds: [cancelEmbed], components: [] });
 }

@@ -130,10 +130,10 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
         return handleClaim(interaction, data, dataPath, config);
       } else if (interaction.customId === "ticket_close") {
         return handleClose(interaction, config, data, dataPath);
-      } else if (interaction.customId === "ticket_close_confirm") {
+      } else if (interaction.customId.startsWith("ticket_close_confirm")) {
         return handleCloseConfirm(interaction, config, data, dataPath);
-      } else if (interaction.customId === "ticket_close_cancel") {
-        return handleCloseCancel(interaction);
+      } else if (interaction.customId.startsWith("ticket_close_cancel")) {
+        return handleCloseCancel(interaction, config);
       } else if (interaction.customId.startsWith("ticket_rate_")) {
         return showRatingModal(interaction, data);
       } else {

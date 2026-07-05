@@ -7,6 +7,7 @@ const {
   PermissionFlagsBits,
 } = require("discord.js");
 const { saveJson, addLogo } = require("../utils/fileManager");
+const EMOJIS = require("../utils/emojis");
 
 // Lazy load security logs to avoid circular dependency
 let securityLogs = null;
@@ -20,7 +21,7 @@ function getSecurityLogs() {
 // ============== CAPTCHA GENERATION ==============
 
 function generateMathCaptcha() {
-  const operations = ["+", "-", "×"];
+  const operations = ["+", "-", "x"];
   const operation = operations[Math.floor(Math.random() * operations.length)];
 
   let num1, num2, answer;
@@ -36,7 +37,7 @@ function generateMathCaptcha() {
       num2 = Math.floor(Math.random() * num1);
       answer = num1 - num2;
       break;
-    case "×":
+    case "x":
       num1 = Math.floor(Math.random() * 10) + 1;
       num2 = Math.floor(Math.random() * 10) + 1;
       answer = num1 * num2;
@@ -85,12 +86,13 @@ async function createVerificationPanel(interaction, config, configPath) {
     new EmbedBuilder()
       .setTitle("Server Verification")
       .setDescription(
-        "To gain access to this server, you must verify that you're human.\n\n" +
-          "**How it works:**\n" +
-          "• Click the button below to start\n" +
-          "• Solve a simple math problem\n" +
-          "• You have 3 attempts to answer correctly\n\n" +
-          "Click **Verify** to begin!"
+        `${EMOJIS.verifiedCheck} **__Verify to unlock the server.__**\n\n` +
+          "This quick check keeps automated accounts out while letting real members in.\n\n" +
+          `${EMOJIS.pin} **How it works:**\n` +
+          "> **1.** Click **Verify** below.\n" +
+          "> **2.** Solve a simple math problem.\n" +
+          "> **3.** You have **3 attempts** to answer correctly.\n\n" +
+          "*Once complete, your verified role is applied automatically.*"
       )
       .setColor(0x522081)
       .setFooter({ text: "Verification System" })
@@ -103,13 +105,13 @@ async function createVerificationPanel(interaction, config, configPath) {
       .setCustomId("verify_start")
       .setLabel("Verify")
       .setStyle(ButtonStyle.Success)
-      .setEmoji("✅")
+      .setEmoji(EMOJIS.verifiedCheck)
   );
 
   await channel.send({ embeds: [embed], components: [row] });
 
   return interaction.reply({
-    content: `✅ Verification panel created in ${channel}!`,
+    content: `${EMOJIS.check} Verification panel created in ${channel}.`,
     flags: 64,
   });
 }
@@ -126,7 +128,7 @@ async function startVerification(interaction, config, data, dataPath) {
   // Check if already verified
   if (verifiedRoleId && member.roles.cache.has(verifiedRoleId)) {
     return interaction.reply({
-      content: "✅ You are already verified!",
+      content: `${EMOJIS.check} You are already verified.`,
       flags: 64,
     });
   }
@@ -139,7 +141,7 @@ async function startVerification(interaction, config, data, dataPath) {
   if (accountAge < minAgeMs) {
     const daysOld = Math.floor(accountAge / (24 * 60 * 60 * 1000));
     return interaction.reply({
-      content: `❌ Your account must be at least **${minAge} days old** to verify. Your account is only **${daysOld} days old**.`,
+      content: `${EMOJIS.no} Your account must be at least **${minAge} days old** to verify. Your account is only **${daysOld} days old**.`,
       flags: 64,
     });
   }
@@ -152,7 +154,7 @@ async function startVerification(interaction, config, data, dataPath) {
 
   if (recentFromUser.length >= 3) {
     return interaction.reply({
-      content: "❌ Too many verification attempts. Please wait a few minutes and try again.",
+      content: `${EMOJIS.no} Too many verification attempts. Please wait a few minutes and try again.`,
       flags: 64,
     });
   }
@@ -180,12 +182,12 @@ async function startVerification(interaction, config, data, dataPath) {
   });
 
   const embed = new EmbedBuilder()
-    .setTitle("🔢 Verification CAPTCHA")
+    .setTitle("Verification CAPTCHA")
     .setDescription(
-      `Solve this math problem to verify:\n\n` +
-        `**${captcha.question} = ?**\n\n` +
-        `Click the button with the correct answer.\n` +
-        `You have **3 attempts**.`
+      `${EMOJIS.pin} **Solve this math problem to verify:**\n\n` +
+        `# ${captcha.question} = ?\n\n` +
+        "Click the button with the correct answer.\n" +
+        "You have **3 attempts**."
     )
     .setColor(0x522081)
     .setFooter({ text: "Attempts: 0/3" });
@@ -204,7 +206,7 @@ async function handleVerificationAnswer(interaction, config, data, dataPath) {
 
   if (!attempt) {
     return interaction.reply({
-      content: "❌ Your verification session has expired. Please click the Verify button again.",
+      content: `${EMOJIS.no} Your verification session has expired. Please click the Verify button again.`,
       flags: 64,
     });
   }
@@ -213,7 +215,7 @@ async function handleVerificationAnswer(interaction, config, data, dataPath) {
   if (Date.now() - attempt.timestamp > 300000) {
     verificationAttempts.delete(member.id);
     return interaction.reply({
-      content: "❌ Your verification session has expired. Please click the Verify button again.",
+      content: `${EMOJIS.no} Your verification session has expired. Please click the Verify button again.`,
       flags: 64,
     });
   }
@@ -231,7 +233,7 @@ async function handleVerificationAnswer(interaction, config, data, dataPath) {
       } catch (error) {
         console.error("Failed to add verified role:", error);
         return interaction.update({
-          content: "❌ Failed to add verified role. Please contact an administrator.",
+          content: `${EMOJIS.no} Failed to add verified role. Please contact an administrator.`,
           embeds: [],
           components: [],
         });
@@ -264,8 +266,8 @@ async function handleVerificationAnswer(interaction, config, data, dataPath) {
     secLogs.logVerification(member, "captcha", true, data, dataPath);
 
     const embed = new EmbedBuilder()
-      .setTitle("✅ Verification Complete!")
-      .setDescription("You have been verified and can now access the server.")
+      .setTitle("Verification Complete")
+      .setDescription(`${EMOJIS.check} **You are verified.**\n\n> You can now access the server.`)
       .setColor(0x57F287)
       .setTimestamp();
 
@@ -284,10 +286,10 @@ async function handleVerificationAnswer(interaction, config, data, dataPath) {
       secLogs.logVerification(member, "captcha", false, data, dataPath);
 
       const embed = new EmbedBuilder()
-        .setTitle("❌ Verification Failed")
+        .setTitle("Verification Failed")
         .setDescription(
-          "You've used all your attempts.\n\n" +
-            "Please wait a moment and try again by clicking the Verify button."
+          `${EMOJIS.no} You've used all your attempts.\n\n` +
+            "> Please wait a moment and try again by clicking the **Verify** button."
         )
         .setColor(0xED4245);
 
@@ -313,11 +315,11 @@ async function handleVerificationAnswer(interaction, config, data, dataPath) {
     });
 
     const embed = new EmbedBuilder()
-      .setTitle("❌ Incorrect Answer")
+      .setTitle("Incorrect Answer")
       .setDescription(
-        `That was wrong. Try again!\n\n` +
-          `**${newCaptcha.question} = ?**\n\n` +
-          `Attempts remaining: **${attempt.maxAttempts - attempt.attempts}**`
+        `${EMOJIS.no} That was wrong. Try again.\n\n` +
+          `# ${newCaptcha.question} = ?\n\n` +
+          `**Attempts remaining:** ${attempt.maxAttempts - attempt.attempts}`
       )
       .setColor(0x522081)
       .setFooter({ text: `Attempts: ${attempt.attempts}/${attempt.maxAttempts}` });

@@ -6,20 +6,24 @@ const {
   MessageFlags,
 } = require("discord.js");
 const { saveJson, addLogo } = require("../utils/fileManager");
+const EMOJIS = require("../utils/emojis");
 
 // Default roles panel configuration
 const DEFAULT_ROLES_PANEL = {
   title: "Role Selection",
-  description: "Click the buttons below to toggle notification roles.",
+  description:
+    `${EMOJIS.announcement} **__Notification Roles__**\n\n` +
+    "Use the buttons below to toggle the updates you want to receive.\n\n" +
+    "> Click once to add a role. Click again to remove it.",
   color: 0x522081,
-  footer: "Click to toggle roles on/off",
+  footer: "Click to toggle roles on or off",
   thumbnail: null,
   image: null,
   roles: [
     {
       id: "announcements",
       label: "Announcements",
-      emoji: "📢",
+      emoji: EMOJIS.announcement,
       style: "Primary",
       role_id: null, // Set by admin
       description: "Server announcements"
@@ -27,7 +31,7 @@ const DEFAULT_ROLES_PANEL = {
     {
       id: "drops",
       label: "Account Drops",
-      emoji: "🎁",
+      emoji: EMOJIS.unlock,
       style: "Success",
       role_id: null,
       description: "Account drop notifications"
@@ -40,7 +44,28 @@ function getRolesPanelConfig(config) {
   if (!config.roles_panel) {
     config.roles_panel = DEFAULT_ROLES_PANEL;
   }
+  normalizeRolesPanel(config.roles_panel);
   return config.roles_panel;
+}
+
+function normalizeRolesPanel(panel) {
+  panel.description =
+    `${EMOJIS.announcement} **__Notification Roles__**\n\n` +
+    "Use the buttons below to toggle the updates you want to receive.\n\n" +
+    "> Click once to add a role. Click again to remove it.";
+  panel.footer = panel.footer || "Click to toggle roles on or off";
+
+  const defaults = {
+    announcements: EMOJIS.announcement,
+    drops: EMOJIS.unlock,
+  };
+
+  for (const role of panel.roles || []) {
+    const key = String(role.id || "").toLowerCase();
+    if (defaults[key]) {
+      role.emoji = defaults[key];
+    }
+  }
 }
 
 // Create roles panel embed
@@ -61,6 +86,13 @@ async function createRolesPanel(interaction, config, configPath) {
   const embed = new EmbedBuilder()
     .setTitle(panel.title)
     .setDescription(panel.description)
+    .addFields({
+      name: `${EMOJIS.pin} __Available Roles__`,
+      value: validRoles
+        .map((role) => `${role.emoji || EMOJIS.check} **${role.label}**\n> ${role.description || "Toggle this notification role."}`)
+        .join("\n"),
+      inline: false,
+    })
     .setColor(panel.color)
     .setFooter({ text: panel.footer })
     .setTimestamp();
@@ -86,7 +118,7 @@ async function createRolesPanel(interaction, config, configPath) {
   await interaction.channel.send({ embeds: [embed], components: rows });
 
   const successEmbed = new EmbedBuilder()
-    .setDescription("✅ Roles panel created successfully!")
+    .setDescription(`${EMOJIS.check} **Roles panel created successfully.**`)
     .setColor(0x57F287);
 
   await interaction.reply({ embeds: [successEmbed], flags: MessageFlags.Ephemeral });
@@ -120,13 +152,13 @@ async function handleRoleButton(interaction, roleId, config) {
     if (hasRole) {
       await member.roles.remove(role);
       const embed = new EmbedBuilder()
-        .setDescription(`Removed ${role}`)
+        .setDescription(`${EMOJIS.no} Removed ${role}\n\n> You will no longer receive those notifications.`)
         .setColor(0xED4245);
       return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     } else {
       await member.roles.add(role);
       const embed = new EmbedBuilder()
-        .setDescription(`Added ${role}`)
+        .setDescription(`${EMOJIS.check} Added ${role}\n\n> You will now receive those notifications.`)
         .setColor(0x57F287);
       return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     }

@@ -425,11 +425,87 @@ async function showTimestampHelper(interaction) {
   await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
 }
 
+async function showFormatHelpPolished(interaction) {
+  const embed = new EmbedBuilder()
+    .setTitle("Discord Embed Formatting Guide")
+    .setColor(0x5865F2)
+    .setDescription("Copy these patterns into embed titles, descriptions, fields, panel text, or admin messages.")
+    .addFields(
+      {
+        name: "Text Formatting",
+        value:
+          "`**text**` -> **Bold**\n" +
+          "`*text*` -> *Italic*\n" +
+          "`__text__` -> __Underline__\n" +
+          "`***text***` -> ***Bold italic***\n" +
+          "`__**text**__` -> __**Underline bold**__\n" +
+          "`~~text~~` -> ~~Strikethrough~~\n" +
+          "`||text||` -> ||Spoiler||",
+        inline: true,
+      },
+      {
+        name: "Structure",
+        value:
+          "`# Heading` -> Large heading\n" +
+          "`## Heading` -> Medium heading\n" +
+          "`### Heading` -> Small heading\n" +
+          "`> text` -> Block quote\n" +
+          "`>>> text` -> Multi-line quote\n" +
+          "`` `text` `` -> Click-to-copy inline code\n" +
+          "` ```text ... ``` ` -> Click-to-copy block",
+        inline: true,
+      },
+      {
+        name: "Mentions, Links & Emoji",
+        value:
+          "`<#channel-id>` -> Channel\n" +
+          "`<@user-id>` -> User\n" +
+          "`<@&role-id>` -> Role\n" +
+          "`[Text](https://url)` -> Masked link\n" +
+          "`<:name:id>` -> Custom emoji\n" +
+          "`<a:name:id>` -> Animated emoji",
+        inline: true,
+      },
+      {
+        name: "Timestamps",
+        value:
+          "Use `/embed timestamp` to generate these:\n" +
+          "`<t:1234567890:t>` -> Short time\n" +
+          "`<t:1234567890:D>` -> Long date\n" +
+          "`<t:1234567890:F>` -> Full date & time\n" +
+          "`<t:1234567890:R>` -> Relative time",
+        inline: false,
+      },
+      {
+        name: "Color Names",
+        value:
+          "`blurple` `red` `green` `yellow`\n" +
+          "`orange` `purple` `pink` `teal`\n" +
+          "`blue` `gold` `white` `black` `navy`\n" +
+          "Or any HEX: `#5865F2`",
+        inline: true,
+      },
+      {
+        name: "Fields JSON Example",
+        value:
+          "```json\n" +
+          "[\n" +
+          '  { "name": "Status", "value": "Online", "inline": true },\n' +
+          '  { "name": "Version", "value": "v1.2.0", "inline": true }\n' +
+          "]\n```",
+        inline: false,
+      },
+    )
+    .setFooter({ text: "Use /embed create or /embed advanced to build your embed" });
+
+  await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+}
+
 module.exports = {
   showEmbedModal,
   handleEmbedSubmit,
   showAdvancedEmbedModal,
   handleAdvancedEmbedSubmit,
-  showFormatHelp,
+  showFormatHelp: showFormatHelpPolished,
   showTimestampHelper,
 };

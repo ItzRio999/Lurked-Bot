@@ -27,38 +27,38 @@
   "log_messages": true,
   "logo_url": "https://i.imgur.com/your_logo.png",
   "ticket_panel": {
-    "title": "**Your Server Support**",
-    "description": "Click one of the buttons below to open a support ticket.",
+    "title": "**Lurked Accounts Support**",
+    "description": "**__Ticket Rules:__**\n**1.** By opening a ticket, you agree to the __Terms of Service__.\n**2.** Avoid unnecessary messages - see __[nohello.net](https://nohello.net)__ for proper ticket etiquette.\n**3.** Be __clear__ and __concise__ so staff can help you ***faster***.\n\n**__Support Hours:__**\n**Standard Hours:** 11:00 AM - 8:00 PM EST\n*Replies may take longer outside these hours.*",
     "color": 16760025,
-    "footer": "Your Server Support",
+    "footer": "Support Team",
     "thumbnail": "https://i.imgur.com/your_logo.png",
     "image": null,
     "buttons": [
       {
         "id": "general",
         "label": "General Support",
-        "emoji": "🔧",
+        "emoji": "<:ticket:1523383014648840273>",
         "style": "Primary",
         "description": "General questions and assistance"
       },
       {
-        "id": "Account",
+        "id": "account",
         "label": "Account Suggestion",
-        "emoji": "💡",
+        "emoji": "<:85871unlockedids:1507280997970874378>",
         "style": "Primary",
         "description": "Suggest new accounts"
       },
       {
         "id": "bug",
         "label": "Bug Report",
-        "emoji": "🐛",
+        "emoji": "<:report:1507234789730811945>",
         "style": "Danger",
         "description": "Report bugs or issues"
       },
       {
         "id": "other",
         "label": "Other",
-        "emoji": "📋",
+        "emoji": "<:lurk:1507234721707327508>",
         "style": "Secondary",
         "description": "Anything else"
       }
@@ -66,16 +66,16 @@
   },
   "roles_panel": {
     "title": "Role Selection",
-    "description": "Click the buttons below to toggle notification roles.",
+    "description": "<:announcement:1523381783507501238> **__Notification Roles__**\n\nUse the buttons below to toggle the updates you want to receive.\n\n> Click once to add a role. Click again to remove it.",
     "color": 5793266,
-    "footer": "Click to toggle roles on/off",
+    "footer": "Click to toggle roles on or off",
     "thumbnail": null,
     "image": null,
     "roles": [
       {
         "id": "announcements",
         "label": "Announcements",
-        "emoji": "📢",
+        "emoji": "<:announcement:1523381783507501238>",
         "style": "Primary",
         "role_id": "YOUR_ANNOUNCEMENTS_ROLE_ID",
         "description": "Server announcements"
@@ -83,7 +83,7 @@
       {
         "id": "drops",
         "label": "Account Drops",
-        "emoji": "🎁",
+        "emoji": "<:85871unlockedids:1507280997970874378>",
         "style": "Success",
         "role_id": "YOUR_DROPS_ROLE_ID",
         "description": "Account drop notifications"

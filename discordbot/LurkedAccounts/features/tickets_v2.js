@@ -15,8 +15,8 @@ const EMOJIS = require("../utils/emojis");
 
 const TICKET_EMOJI = EMOJIS.ticket;
 const TICKET_WARNING_TEXT =
-  `${EMOJIS.warning} Pinging staff results in a warning, and can result in a ban by staff if excessive or asked not to.\n` +
-  `${EMOJIS.announcement} tickets auto close after 24 hours if no activity`;
+  `${EMOJIS.warning} **Do not ping staff.** Excessive pings can result in a warning or moderation action.\n` +
+  `${EMOJIS.announcement} Tickets auto close after **24 hours** with no activity.`;
 const CLOSE_REQUEST_AUTO_CLOSE_MS = 5 * 60 * 1000;
 const closeRequestTimers = new Map();
 
@@ -88,31 +88,33 @@ function normalizeTicketPanelEmojis(panel) {
   };
 
   for (const button of panel.buttons || []) {
-    if (defaults[button.id]) {
-      button.emoji = defaults[button.id];
+    const key = String(button.id || "").toLowerCase();
+    if (defaults[key]) {
+      button.emoji = defaults[key];
     }
   }
 }
 
 function buildTicketPanelDescription() {
   return [
-    `${EMOJIS.ticket} **__Welcome to LurkedAccounts Support__**`,
+    `${EMOJIS.ticket} **__LurkedAccounts Support__**`,
     "",
-    "We aim to keep support **clear**, **quick**, and **organized** while helping the community as smoothly as possible.",
+    "Need help? Open a ticket and we will keep the conversation **clear**, **organized**, and easy to follow.",
     "",
     `${EMOJIS.pin} **To get started:**`,
-    "> **1.** Select the category that best matches your issue.",
-    "> **2.** Explain what you need in your first message.",
-    "> **3.** Include screenshots, usernames, order details, or error messages when useful.",
+    "> **1.** Select the category that best matches your issue.\n" +
+      "> **2.** Explain what you need in your first message.\n" +
+      "> **3.** Include screenshots, usernames, order details, or error messages when useful.",
     "",
-    `${EMOJIS.discordDeveloper} **Website:** [Open LurkedAccounts](https://lurkedaccounts.netlify.app/)`,
-    "`https://lurkedaccounts.netlify.app/`",
+    `${EMOJIS.discordDeveloper} **Website:** __[Open LurkedAccounts](https://lurkedaccounts.netlify.app/)__`,
+    `${EMOJIS.save} **Click to copy:**`,
+    "```text\nhttps://lurkedaccounts.netlify.app/\n```",
   ].join("\n");
 }
 
 function buildTicketCategoryList(panel) {
   return (panel.buttons || [])
-    .map((button) => `${button.emoji || EMOJIS.ticket} **${button.label}** - ${button.description || "Open a support ticket."}`)
+    .map((button) => `${button.emoji || EMOJIS.ticket} **${button.label}**\n> ${button.description || "Open a support ticket."}`)
     .join("\n");
 }
 
@@ -214,7 +216,7 @@ async function createTicketPanel(interaction, config, configPath) {
   await interaction.channel.send({ embeds: [embed], components: [row] });
 
   const successEmbed = new EmbedBuilder()
-    .setDescription("✅ Ticket panel created successfully!")
+    .setDescription(`${EMOJIS.check} **Ticket panel created successfully.**`)
     .setColor(0x57F287);
 
   await interaction.reply({ embeds: [successEmbed], flags: MessageFlags.Ephemeral });
@@ -338,12 +340,15 @@ async function createTicketFromButton(interaction, category, config, data, dataP
 
     const embed = new EmbedBuilder()
       .setTitle(`Ticket #${String(ticketNum).padStart(4, '0')}`)
-      .setDescription(`${interaction.user} - A staff member will assist you shortly. Please describe your issue below.`)
+      .setDescription(
+        `${EMOJIS.ticket} ${interaction.user}, a staff member will assist you shortly.\n\n` +
+        "> Please describe the issue, include useful screenshots or order details, and keep everything in this channel."
+      )
       .addFields(
-        { name: "Category", value: categoryName, inline: true },
-        { name: "Opened", value: `<t:${Math.floor(Date.parse(data.tickets[channel.id].created_at) / 1000)}:R>`, inline: true },
-        { name: "User", value: `${interaction.user.tag}`, inline: true },
-        { name: "Warnings", value: TICKET_WARNING_TEXT, inline: false }
+        { name: `${EMOJIS.report} __Category__`, value: `**${categoryName}**`, inline: true },
+        { name: `${EMOJIS.clock} __Opened__`, value: `<t:${Math.floor(Date.parse(data.tickets[channel.id].created_at) / 1000)}:R>`, inline: true },
+        { name: `${EMOJIS.lurk} __User__`, value: `${interaction.user.tag}`, inline: true },
+        { name: `${EMOJIS.warning} __Support Rules__`, value: TICKET_WARNING_TEXT, inline: false }
       )
       .setColor(0x522081)
       .setFooter({ text: "Use the buttons below to manage this ticket" })
@@ -376,7 +381,7 @@ async function createTicketFromButton(interaction, category, config, data, dataP
     });
 
     const successEmbed = new EmbedBuilder()
-      .setDescription(`✅ Ticket created successfully! ${channel}`)
+      .setDescription(`${EMOJIS.check} **Ticket created successfully:** ${channel}`)
       .setColor(0x57F287);
 
     await interaction.editReply({ embeds: [successEmbed] });
@@ -413,7 +418,7 @@ async function handleClaim(interaction, data, dataPath, config) {
 
   const embed = new EmbedBuilder()
     .setTitle("Ticket Claimed")
-    .setDescription(`${interaction.user} has claimed this ticket and will be handling your inquiry. They will try their best to resolve any issues you may have.`)
+    .setDescription(`${EMOJIS.check} ${interaction.user} has claimed this ticket and will handle the inquiry from here.`)
     .addFields(
       { name: "Claimed By", value: `${interaction.user}`, inline: true },
       { name: "Claimed", value: `<t:${Math.floor(Date.parse(ticket.claimed_at) / 1000)}:R>`, inline: true }

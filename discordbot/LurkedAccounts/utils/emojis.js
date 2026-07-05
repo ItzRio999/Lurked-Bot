@@ -8,7 +8,7 @@ const EMOJIS = {
   fire: "<a:Fire:1507282954915811360>",
   unlock: "<:85871unlockedids:1507280997970874378>",
   utilityDeveloper: "<a:518379moderator:1507282281335754822>",
-  discordDeveloper: "<:discorddeveloper:697686848545488986>",
+  discordDeveloper: "<:discorddeveloper:1523394790081822812>",
   cloudSave: "<:Save:1507293986094583880>",
   no: "<a:6016xmarkoutline:1507282086954930186>",
   ban: "<:emojigg_Ban:1507294066948444282>",

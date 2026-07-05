@@ -270,7 +270,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
         new EmbedBuilder()
           .setTitle("Ticket System Configured")
           .setDescription(
-            `Ticket system is ready.\n\u200b`
+            `${EMOJIS.check} **Ticket system is ready.**\n\u200b`
           )
           .addFields(
             { name: "Ticket Category", value: `${category}`, inline: true },
@@ -1696,28 +1696,31 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
           "**To get started:** press our website link below, sign up, and link your Discord account.",
           "That gives you access to drops, forums, Lurked Tweaks, and community events like movie nights and game nights.",
           "",
-          "🌐 **Website:** [Click Here](https://lurkedaccounts.netlify.app/)",
-          "📋 **Click to copy:** `https://lurkedaccounts.netlify.app/`",
+          `${EMOJIS.discordDeveloper} **Website:** __[Open LurkedAccounts](https://lurkedaccounts.netlify.app/)__`,
+          `${EMOJIS.save} **Click to copy:**`,
+          "```text",
+          "https://lurkedaccounts.netlify.app/",
+          "```",
           "",
           "This is our temporary website domain while we finish moving hosts.",
           "Enjoy the site, and make a ticket if you have any questions.",
           "",
-          "🛡️ **LurkedAccounts does NOT log any information.**",
+          `${EMOJIS.verifiedCheck} **__Privacy:__** LurkedAccounts does **not** log unnecessary personal information.`,
         ].join("\n")
       )
       .addFields(
         {
-          name: "Published",
+          name: `${EMOJIS.clock} __Published__`,
           value: `<t:${unixNow}:F>\n<t:${unixNow}:R>`,
           inline: true,
         },
         {
-          name: "Quick Copy",
-          value: "```https://lurkedaccounts.netlify.app/```",
+          name: `${EMOJIS.save} __Quick Copy__`,
+          value: "```text\nhttps://lurkedaccounts.netlify.app/\n```",
           inline: true,
         }
       )
-      .setFooter({ text: "LurkedAccounts • Free services for the community" })
+      .setFooter({ text: "LurkedAccounts | Free services for the community" })
       .setTimestamp();
 
     if (primaryImageUrl) {

@@ -8,6 +8,7 @@ const {
   MessageFlags,
 } = require("discord.js");
 const { saveJson, addLogo } = require("../utils/fileManager");
+const EMOJIS = require("../utils/emojis");
 
 // Set ticket priority
 async function setTicketPriority(interaction, data, dataPath) {
@@ -145,9 +146,9 @@ async function requestTicketRating(channel, ticket, user, config) {
     const buttonRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId(`ticket_rate_${ticket.ticket_num}`)
-        .setLabel("⭐ Rate Your Experience")
+        .setLabel("Rate Your Experience")
         .setStyle(ButtonStyle.Primary)
-        .setEmoji("📝")
+        .setEmoji(EMOJIS.report)
     );
 
     const embed = new EmbedBuilder()
@@ -322,8 +323,8 @@ async function handleTicketRating(interaction, data, dataPath, config) {
 
   saveJson(dataPath, data);
 
-  const stars = "⭐".repeat(rating);
-  const staffStars = staffRating ? "⭐".repeat(staffRating) : null;
+  const stars = EMOJIS.fire.repeat(rating);
+  const staffStars = staffRating ? EMOJIS.fire.repeat(staffRating) : null;
   const ratingLabels = ["", "Poor", "Fair", "Good", "Great", "Excellent"];
 
   const embed = new EmbedBuilder()
@@ -453,7 +454,7 @@ async function toggleAutoClose(interaction, config, configPath) {
     .setTitle("Auto-Close Configuration")
     .setDescription(`Auto-close has been ${enabled ? "enabled" : "disabled"}.`)
     .addFields(
-      { name: "Status", value: enabled ? "✅ Enabled" : "❌ Disabled", inline: true },
+      { name: "Status", value: enabled ? `${EMOJIS.check} Enabled` : `${EMOJIS.no} Disabled`, inline: true },
       { name: "Threshold", value: `${hours} hours`, inline: true }
     )
     .setColor(enabled ? 0x57F287 : 0xED4245)
@@ -468,7 +469,7 @@ async function viewTicketStats(interaction, data, config) {
 
   if (tickets.length === 0) {
     const embed = new EmbedBuilder()
-      .setDescription("📊 No ticket data available yet!")
+      .setDescription(`${EMOJIS.report} No ticket data available yet!`)
       .setColor(0x522081);
     return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   }
@@ -501,7 +502,7 @@ async function viewTicketStats(interaction, data, config) {
       { name: "Average Rating", value: `${avgRating}/5`, inline: true },
       { name: "Rated Tickets", value: `${ratedTickets.length}/${closedTickets}`, inline: true },
       { name: "\u200b", value: "\u200b", inline: true },
-      { name: "Priority Breakdown", value: `🔴 Urgent: ${priorities.urgent}\n🟠 High: ${priorities.high}\n🟡 Medium: ${priorities.medium}\n🟢 Low: ${priorities.low}\n⚪ None: ${priorities.none}`, inline: false }
+      { name: "Priority Breakdown", value: `${EMOJIS.fire} Urgent: ${priorities.urgent}\n${EMOJIS.report} High: ${priorities.high}\n${EMOJIS.clock} Medium: ${priorities.medium}\n${EMOJIS.check} Low: ${priorities.low}\n${EMOJIS.no} None: ${priorities.none}`, inline: false }
     )
     .setColor(0x522081)
     .setTimestamp();
@@ -644,7 +645,7 @@ async function addUserToTicket(interaction, data, dataPath, config) {
 
     const embed = new EmbedBuilder()
       .setTitle("User Added")
-      .setDescription(`✅ ${userToAdd} has been added to this ticket.`)
+      .setDescription(`${EMOJIS.check} ${userToAdd} has been added to this ticket.`)
       .setColor(0x57F287)
       .setFooter({ text: `Added by ${interaction.user.tag}` })
       .setTimestamp();
@@ -653,7 +654,7 @@ async function addUserToTicket(interaction, data, dataPath, config) {
 
     // Send notification in ticket
     const notifEmbed = new EmbedBuilder()
-      .setDescription(`👋 ${userToAdd} has been added to this ticket by ${interaction.user}`)
+      .setDescription(`${EMOJIS.lurk} ${userToAdd} has been added to this ticket by ${interaction.user}`)
       .setColor(0x522081);
     await interaction.channel.send({ embeds: [notifEmbed] });
 
@@ -713,7 +714,7 @@ async function removeUserFromTicket(interaction, data, dataPath, config) {
 
     const embed = new EmbedBuilder()
       .setTitle("User Removed")
-      .setDescription(`✅ ${userToRemove} has been removed from this ticket.`)
+      .setDescription(`${EMOJIS.check} ${userToRemove} has been removed from this ticket.`)
       .setColor(0x57F287)
       .setFooter({ text: `Removed by ${interaction.user.tag}` })
       .setTimestamp();

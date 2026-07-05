@@ -1,0 +1,43 @@
+// Central list of custom Discord emojis for this bot.
+// Keep bot-facing emoji references here so command/help/ticket UI stays consistent.
+const EMOJIS = {
+  lurk: "<:lurk:1507234721707327508>",
+  xp: "<:xp:1507234847519674448>",
+  report: "<:report:1507234789730811945>",
+  level: "<:level:1507234668548722778>",
+  fire: "<a:Fire:1507282954915811360>",
+  unlock: "<:85871unlockedids:1507280997970874378>",
+  utilityDeveloper: "<a:518379moderator:1507282281335754822>",
+  discordDeveloper: "<:discorddeveloper:697686848545488986>",
+  cloudSave: "<:Save:1507293986094583880>",
+  no: "<a:6016xmarkoutline:1507282086954930186>",
+  ban: "<:emojigg_Ban:1507294066948444282>",
+  check: "<:428758neonverifiedcheck:1490792869143777452>",
+  verifiedCheck: "<:428758neonverifiedcheck:1490792869143777452>",
+  clock: "<:cooldown957395:1507280984658415716>",
+  ping: "<a:speaker:1507293472984666232>",
+  pin: "<a:CheckThePins:1507293085879504938>",
+  settings: "<a:9093settings:1507281007580287036>",
+  typing: "<a:Discord_loading:1507282790889164820>",
+  updateLog: "<a:diamondrotate:1507283156754104453>",
+  unlockedIds: "<:85871unlockedids:1507280997970874378>",
+  cooldown: "<:cooldown957395:1507280984658415716>",
+  customSettings: "<a:9093settings:1507281007580287036>",
+  diamondRotate: "<a:diamondrotate:1507283156754104453>",
+  moderator: "<a:518379moderator:1507282281335754822>",
+  xmarkOutline: "<a:6016xmarkoutline:1507282086954930186>",
+  neonVerifiedCheck: "<:428758neonverifiedcheck:1490792869143777452>",
+  customFire: "<a:Fire:1507282954915811360>",
+  discordLoading: "<a:Discord_loading:1507282790889164820>",
+  staffCrown: "<:StaffCrown:1490796868626550975>",
+  checkThePins: "<a:CheckThePins:1507293085879504938>",
+  save: "<:Save:1507293986094583880>",
+  customBan: "<:emojigg_Ban:1507294066948444282>",
+  speaker: "<a:speaker:1507293472984666232>",
+
+  ticket: "<:ticket:1523383014648840273>",
+  warning: "<:server_warning3:1438899547098320977>",
+  announcement: "<:announcement:1523381783507501238>",
+};
+
+module.exports = EMOJIS;

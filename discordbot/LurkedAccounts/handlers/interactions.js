@@ -26,18 +26,19 @@ const { submitVouch, backupVouches, restoreVouches } = require("../features/vouc
 const { handleSecurityTrapDecision, showSecurityTrapBans } = require("../features/securityTrap");
 const { requestMovie, listMovieRequests } = require("../features/movieRequests");
 const { hasStaffRole, hasVerifiedRole, getVerifiedRoleId } = require("../utils/permissions");
+const EMOJIS = require("../utils/emojis");
 
 function buildBotCmdsEmbed(config) {
   return addLogo(
     new EmbedBuilder()
-      .setTitle('📋  Bot Commands')
+      .setTitle(`${EMOJIS.report}  Bot Commands`)
       .setColor(0x5865F2)
       .setDescription(
         'All user commands must be run **in this channel**. Using them elsewhere will redirect you back here.\n\u200b'
       )
       .addFields(
         {
-          name: '⭐  /vouch — Submit a Review',
+          name: `${EMOJIS.fire}  /vouch — Submit a Review`,
           value: [
             'Leave a public review for our server. Helps the community grow.',
             '```',
@@ -51,7 +52,7 @@ function buildBotCmdsEmbed(config) {
           inline: false
         },
         {
-          name: '🎬  /requestmovie — Movie Night Requests',
+          name: `${EMOJIS.lurk}  /requestmovie — Movie Night Requests`,
           value: [
             'Submit a film for consideration at our next movie night.',
             '```',
@@ -66,27 +67,27 @@ function buildBotCmdsEmbed(config) {
           inline: false
         },
         {
-          name: '🔗  How to Get a Movie Link',
+          name: `${EMOJIS.pin}  How to Get a Movie Link`,
           value: [
             'Search your movie on **[IMDb](https://www.imdb.com)** or **[TMDb](https://www.themoviedb.org)**, then copy the URL from your browser and paste it into the `link` field.',
             '',
-            '> ✅  Requests that include a valid link are **significantly more likely to be accepted** — it helps staff identify the exact film quickly.',
+            `> ${EMOJIS.check}  Requests that include a valid link are **significantly more likely to be accepted** — it helps staff identify the exact film quickly.`,
             '\u200b',
           ].join('\n'),
           inline: false
         },
         {
-          name: '👤  /userinfo',
+          name: `${EMOJIS.lurk}  /userinfo`,
           value: '```\n/userinfo user:\n```\nView info about yourself or any member.',
           inline: true
         },
         {
-          name: '📨  /invites',
+          name: `${EMOJIS.ping}  /invites`,
           value: '```\n/invites user:\n```\nCheck your invite count and stats.',
           inline: true
         },
         {
-          name: '❓  /help',
+          name: `${EMOJIS.settings}  /help`,
           value: '```\n/help\n```\nView all available bot commands.',
           inline: true
         }
@@ -443,7 +444,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
       .setColor(0x522081)
       .addFields(
         {
-          name: "<:ticket:1523383014648840273> Support Tickets",
+          name: `${EMOJIS.ticket} Support Tickets`,
           value:
             "`/ticketpanel` - Post ticket panel\n" +
             "`/ticketsetup` - Configure system\n" +
@@ -455,7 +456,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
           inline: true
         },
         {
-          name: "✅ Verification",
+          name: `${EMOJIS.verifiedCheck} Verification`,
           value:
             "`/verifyembed` - Post verify panel\n" +
             "`/verify user` - Manual verify\n" +
@@ -466,7 +467,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
           inline: true
         },
         {
-          name: "🛡️ Moderation",
+          name: `${EMOJIS.ban} Moderation`,
           value:
             "`/nuke` - Bulk delete\n" +
             "`/timeout` `/untimeout` - Mute\n" +
@@ -486,7 +487,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
           inline: true
         },
         {
-          name: "🎁 Giveaways",
+          name: `${EMOJIS.fire} Giveaways`,
           value:
             "`/giveaway start` - Create\n" +
             "`/giveaway end` - End early\n" +
@@ -503,7 +504,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
           inline: true
         },
         {
-          name: "📊 Polls & Welcome",
+          name: `${EMOJIS.report} Polls & Welcome`,
           value:
             "`/poll` - Create poll\n" +
             "`/setwelcome` `/setleave`\n" +
@@ -511,7 +512,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
           inline: true
         },
         {
-          name: "📝 Embed Creator",
+          name: `${EMOJIS.save} Embed Creator`,
           value:
             "`/embed create` - Basic embed\n" +
             "`/embed advanced` - Fields, images & more\n" +
@@ -520,7 +521,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
           inline: true
         },
         {
-          name: "📋 Audit Logging",
+          name: `${EMOJIS.report} Audit Logging`,
           value:
             "`/setlogchannel` - Set log channel\n" +
             "`/logs view` - View log settings\n" +
@@ -529,7 +530,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
           inline: true
         },
         {
-          name: "📨 Invite Tracking",
+          name: `${EMOJIS.ping} Invite Tracking`,
           value:
             "`/invites` - Your invite stats\n" +
             "`/invites @user` - User's stats\n" +
@@ -537,7 +538,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
           inline: true
         },
         {
-          name: "⏰ Timed Roles",
+          name: `${EMOJIS.clock} Timed Roles`,
           value:
             "`/timedrole` - Assign temp role\n" +
             "`/timedrolelist` - View active\n" +
@@ -545,7 +546,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
           inline: true
         },
         {
-          name: "⚙️ Configuration",
+          name: `${EMOJIS.settings} Configuration`,
           value:
             "`/quicksetup tickets` - Fast setup\n" +
             "`/verifylog set` - Verify logs\n" +
@@ -554,7 +555,7 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
         }
       )
       .addFields({
-        name: "🚨 Security Trap",
+        name: `${EMOJIS.ban} Security Trap`,
         value:
           "`/security dashboard` - Security overview\n" +
           "`/security logs` - Recent events\n" +

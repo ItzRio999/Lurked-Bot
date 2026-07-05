@@ -11,11 +11,12 @@ const {
 } = require("discord.js");
 const { saveJson, addLogo } = require("../utils/fileManager");
 const { hasStaffRole, isOwnerOrCoowner } = require("../utils/permissions");
+const EMOJIS = require("../utils/emojis");
 
-const TICKET_EMOJI = "<:ticket:1523383014648840273>";
+const TICKET_EMOJI = EMOJIS.ticket;
 const TICKET_WARNING_TEXT =
-  "<:server_warning3:1438899547098320977> Pinging staff results in a warning, and can result in a ban by staff if excessive or asked not to.\n" +
-  "<:announcement:1523381783507501238> tickets auto close after 24 hours if no activity";
+  `${EMOJIS.warning} Pinging staff results in a warning, and can result in a ban by staff if excessive or asked not to.\n` +
+  `${EMOJIS.announcement} tickets auto close after 24 hours if no activity`;
 
 // Default ticket panel configuration
 const DEFAULT_PANEL = {
@@ -76,11 +77,27 @@ function canManageTickets(member, config) {
   );
 }
 
+function normalizeTicketPanelEmojis(panel) {
+  const defaults = {
+    general: EMOJIS.ticket,
+    bug: EMOJIS.report,
+    account: EMOJIS.unlock,
+    other: EMOJIS.lurk,
+  };
+
+  for (const button of panel.buttons || []) {
+    if (defaults[button.id]) {
+      button.emoji = defaults[button.id];
+    }
+  }
+}
+
 // Get panel config or create default
 function getPanelConfig(config) {
   if (!config.ticket_panel) {
     config.ticket_panel = DEFAULT_PANEL;
   }
+  normalizeTicketPanelEmojis(config.ticket_panel);
   return config.ticket_panel;
 }
 
@@ -265,7 +282,7 @@ async function createTicketFromButton(interaction, category, config, data, dataP
         .setCustomId("ticket_close")
         .setLabel("Close Ticket")
         .setStyle(ButtonStyle.Danger)
-        .setEmoji("🔒")
+        .setEmoji(EMOJIS.no)
     );
 
     // Ping staff roles
@@ -374,12 +391,12 @@ async function handleClose(interaction, config, data, dataPath) {
         .setCustomId("ticket_close_confirm")
         .setLabel("Yes, Close Ticket")
         .setStyle(ButtonStyle.Danger)
-        .setEmoji("✅"),
+        .setEmoji(EMOJIS.check),
       new ButtonBuilder()
         .setCustomId("ticket_close_cancel")
         .setLabel("Cancel")
         .setStyle(ButtonStyle.Secondary)
-        .setEmoji("❌")
+        .setEmoji(EMOJIS.no)
     );
 
   await interaction.reply({ embeds: [confirmEmbed], components: [confirmRow], flags: MessageFlags.Ephemeral });
@@ -398,7 +415,7 @@ async function handleCloseConfirm(interaction, config, data, dataPath) {
     .setTimestamp();
 
   // Update the original ephemeral message
-  await interaction.update({ embeds: [new EmbedBuilder().setDescription("✅ Ticket is being closed...").setColor(0x57F287)], components: [] });
+  await interaction.update({ embeds: [new EmbedBuilder().setDescription(`${EMOJIS.check} Ticket is being closed...`).setColor(0x57F287)], components: [] });
 
   // Send public message
   await interaction.channel.send({ embeds: [embed] });

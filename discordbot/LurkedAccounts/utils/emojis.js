@@ -41,6 +41,7 @@ const EMOJIS = {
   keritCross: "<:KERiT_cross:1524285919300161596>",
   free: "<:FREE:1524285896311181393>",
   web: "<:web:1524292130707603566>",
+  lurkedTv: "<:LurkedTV:1524294539144073336>",
   question2: "<:question2:1524288871443988553>",
 
   // Patch / updates / info

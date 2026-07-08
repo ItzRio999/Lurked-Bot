@@ -79,7 +79,7 @@ function buildServerAdMessage(config) {
           `${EMOJIS.free} **LurkedTweaks**`,
           "> A free Windows optimizer made to clean up the small annoyances, improve responsiveness, and keep your setup feeling fresh.",
           "",
-          `${EMOJIS.web} **LurkedTV**`,
+          `${EMOJIS.lurkedTv} **LurkedTV** ${EMOJIS.free}`,
           `> Movies and series, free to watch, without turning a simple night into a scavenger hunt: **[Open LurkedTV](${ad.lurkedtv_url})**`,
           "",
           `${EMOJIS.fire} **Join once. Stay because it is useful.**`,
@@ -102,7 +102,7 @@ function buildServerAdMessage(config) {
           inline: false,
         },
         {
-          name: `${EMOJIS.free} __LurkedTV__`,
+          name: `${EMOJIS.lurkedTv} __LurkedTV__`,
           value: `\`\`\`text\n${ad.lurkedtv_url}\n\`\`\``,
           inline: false,
         }
@@ -126,7 +126,7 @@ function buildServerAdMessage(config) {
     new ButtonBuilder()
       .setLabel("LurkedTV")
       .setStyle(ButtonStyle.Link)
-      .setEmoji(EMOJIS.free)
+      .setEmoji(EMOJIS.lurkedTv)
       .setURL(ad.lurkedtv_url)
   );
 

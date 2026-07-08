@@ -11,6 +11,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const { securityHeaders } = require('./middleware/securityHeaders');
 const { generalLimiter } = require('./middleware/rateLimiter');
+const { upsertServerAd } = require("./features/serverAd");
 
 // Lazy-load feature modules (loaded on-demand for better memory efficiency on Pi)
 let ticketsModule;
@@ -439,6 +440,24 @@ client.on("clientReady", async () => {
   setInterval(() => {
     securityTrapModule.ensureSecurityTrapNotice(client).catch(console.error);
   }, 30000);
+
+  if (data.server_ad_channel_id && data.server_ad_message_id) {
+    const serverAdChannel = await client.channels
+      .fetch(data.server_ad_channel_id)
+      .catch(() => null);
+
+    if (serverAdChannel && serverAdChannel.isTextBased()) {
+      await upsertServerAd({
+        channel: serverAdChannel,
+        client,
+        config,
+        data,
+        dataPath: DATA_PATH,
+      }).catch((error) => {
+        console.error("Error refreshing server ad:", error);
+      });
+    }
+  }
 });
 
 client.on("messageCreate", async (message) => {

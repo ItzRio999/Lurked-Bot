@@ -27,6 +27,11 @@ const { handleSecurityTrapDecision, showSecurityTrapBans } = require("../feature
 const { requestMovie, listMovieRequests } = require("../features/movieRequests");
 const { hasStaffRole, hasVerifiedRole, getVerifiedRoleId } = require("../utils/permissions");
 const EMOJIS = require("../utils/emojis");
+const {
+  normalizeHttpUrl,
+  setServerAdConfig,
+  upsertServerAd,
+} = require("../features/serverAd");
 
 function buildBotCmdsEmbed(config) {
   return addLogo(
@@ -1765,6 +1770,119 @@ async function handleInteraction(interaction, config, data, configPath, dataPath
       config
     );
     return interaction.reply({ embeds: [successEmbed], flags: MessageFlags.Ephemeral });
+  }
+
+  // ============== SERVER AD STICKY EMBED ==============
+  if (name === "server-ad") {
+    const canPostServerAd =
+      isOwnerOrCoowner(member, config) ||
+      hasStaffRole(member, config) ||
+      member.permissions.has(PermissionFlagsBits.ManageMessages) ||
+      member.permissions.has(PermissionFlagsBits.Administrator);
+
+    if (!canPostServerAd) {
+      const denyEmbed = addLogo(
+        new EmbedBuilder()
+          .setDescription("âŒ You need Manage Messages (or staff/owner access) to use this command.")
+          .setColor(0xED4245),
+        config
+      );
+      return interaction.reply({ embeds: [denyEmbed], flags: MessageFlags.Ephemeral });
+    }
+
+    const targetChannel = interaction.options.getChannel("channel") || interaction.channel;
+    const websiteUrlInput = interaction.options.getString("website_url");
+    const discordInviteInput = interaction.options.getString("discord_invite");
+    const lurkedTvUrlInput = interaction.options.getString("lurkedtv_url");
+    const forceRepost = interaction.options.getBoolean("repost") === true;
+
+    const updates = {};
+    const invalidLabels = [];
+
+    if (websiteUrlInput) {
+      updates.website_url = normalizeHttpUrl(websiteUrlInput);
+      if (!updates.website_url) invalidLabels.push("website_url");
+    }
+
+    if (discordInviteInput) {
+      updates.discord_invite = normalizeHttpUrl(discordInviteInput);
+      if (!updates.discord_invite) invalidLabels.push("discord_invite");
+    }
+
+    if (lurkedTvUrlInput) {
+      updates.lurkedtv_url = normalizeHttpUrl(lurkedTvUrlInput);
+      if (!updates.lurkedtv_url) invalidLabels.push("lurkedtv_url");
+    }
+
+    if (invalidLabels.length > 0) {
+      const invalidEmbed = addLogo(
+        new EmbedBuilder()
+          .setDescription(`âŒ Invalid URL option(s): \`${invalidLabels.join("`, `")}\`. Please use full \`https://\` links.`)
+          .setColor(0xED4245),
+        config
+      );
+      return interaction.reply({ embeds: [invalidEmbed], flags: MessageFlags.Ephemeral });
+    }
+
+    if (!targetChannel || !targetChannel.isTextBased()) {
+      const channelErrorEmbed = addLogo(
+        new EmbedBuilder()
+          .setDescription("âŒ I can only post the server ad in a text channel.")
+          .setColor(0xED4245),
+        config
+      );
+      return interaction.reply({ embeds: [channelErrorEmbed], flags: MessageFlags.Ephemeral });
+    }
+
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+    if (Object.keys(updates).length > 0) {
+      setServerAdConfig(config, updates);
+      saveJson(configPath, config);
+    }
+
+    const result = await upsertServerAd({
+      channel: targetChannel,
+      client: interaction.client,
+      config,
+      data,
+      dataPath,
+      forceRepost,
+    });
+
+    const actionText = {
+      posted: "posted",
+      updated: "updated",
+      refreshed: "refreshed",
+      reposted: "reposted",
+    }[result.action] || "updated";
+
+    const successEmbed = addLogo(
+      new EmbedBuilder()
+        .setTitle("Server Ad Refreshed")
+        .setDescription(`${EMOJIS.check} Server ad ${actionText} in <#${result.channelId}>.`)
+        .addFields(
+          {
+            name: `${EMOJIS.web} Website`,
+            value: `\`\`\`text\n${result.config.website_url}\n\`\`\``,
+            inline: false,
+          },
+          {
+            name: `${EMOJIS.discordLoading} Discord`,
+            value: `\`\`\`text\n${result.config.discord_invite}\n\`\`\``,
+            inline: true,
+          },
+          {
+            name: `${EMOJIS.free} LurkedTV`,
+            value: `\`\`\`text\n${result.config.lurkedtv_url}\n\`\`\``,
+            inline: true,
+          }
+        )
+        .setColor(0x57F287),
+      config
+    );
+
+    return interaction.editReply({ embeds: [successEmbed] });
   }
 
   if (name === "inviteleaderboard") {

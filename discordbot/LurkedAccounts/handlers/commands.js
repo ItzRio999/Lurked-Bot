@@ -732,6 +732,42 @@ const commands = [
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
 
+  new SlashCommandBuilder()
+    .setName("server-ad")
+    .setDescription("Post or refresh the tracked LurkedAccounts server ad embed")
+    .addChannelOption(opt =>
+      opt
+        .setName("channel")
+        .setDescription("Channel to post the ad in (defaults to this channel)")
+        .addChannelTypes(ChannelType.GuildText)
+        .setRequired(false)
+    )
+    .addStringOption(opt =>
+      opt
+        .setName("website_url")
+        .setDescription("Current LurkedAccounts website URL")
+        .setRequired(false)
+    )
+    .addStringOption(opt =>
+      opt
+        .setName("discord_invite")
+        .setDescription("Current Discord invite URL")
+        .setRequired(false)
+    )
+    .addStringOption(opt =>
+      opt
+        .setName("lurkedtv_url")
+        .setDescription("Current LurkedTV URL")
+        .setRequired(false)
+    )
+    .addBooleanOption(opt =>
+      opt
+        .setName("repost")
+        .setDescription("Delete and resend instead of editing the tracked ad")
+        .setRequired(false)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
+
   // ============== INVITE TRACKING ==============
   new SlashCommandBuilder()
     .setName("invites")

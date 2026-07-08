@@ -26,6 +26,11 @@
   "audit_log_channel_id": "YOUR_AUDIT_LOG_CHANNEL_ID",
   "log_messages": true,
   "logo_url": "https://i.imgur.com/your_logo.png",
+  "server_ad": {
+    "website_url": "https://lurkedaccounts.tech/#home",
+    "discord_invite": "https://discord.gg/UekZuzk5gW",
+    "lurkedtv_url": "https://lurkedtv.vercel.app/#"
+  },
   "ticket_panel": {
     "title": "**Lurked Accounts Support**",
     "description": "**__Ticket Rules:__**\n**1.** By opening a ticket, you agree to the __Terms of Service__.\n**2.** Avoid unnecessary messages - see __[nohello.net](https://nohello.net)__ for proper ticket etiquette.\n**3.** Be __clear__ and __concise__ so staff can help you ***faster***.\n\n**__Support Hours:__**\n**Standard Hours:** 11:00 AM - 8:00 PM EST\n*Replies may take longer outside these hours.*",

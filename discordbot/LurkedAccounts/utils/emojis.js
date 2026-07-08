@@ -38,6 +38,10 @@ const EMOJIS = {
   ticket: "<:ticket:1523383014648840273>",
   warning: "<:server_warning3:1523387865260888064>",
   announcement: "<:announcement:1523381783507501238>",
+  keritCross: "<:KERiT_cross:1524285919300161596>",
+  free: "<:FREE:1524285896311181393>",
+  web: "<:web:1502880311850172566>",
+  question2: "<:question2:1524288871443988553>",
 };
 
 module.exports = EMOJIS;

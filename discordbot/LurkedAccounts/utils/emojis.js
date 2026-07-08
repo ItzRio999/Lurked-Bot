@@ -42,6 +42,11 @@ const EMOJIS = {
   free: "<:FREE:1524285896311181393>",
   web: "<:web:1524292130707603566>",
   question2: "<:question2:1524288871443988553>",
+
+  // Patch / updates / info
+  redTools: "<:redtools:1524292686314602547>",
+  info: "<:info:1524292876853448755>",
+  announceUpdate: "<a:announce_update:1524292542798102618>",
 };
 
 module.exports = EMOJIS;

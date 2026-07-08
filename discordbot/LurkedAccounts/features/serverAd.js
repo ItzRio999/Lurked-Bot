@@ -13,6 +13,7 @@ const DEFAULT_SERVER_AD = {
   discord_invite: "https://discord.gg/UekZuzk5gW",
   lurkedtv_url: "https://lurkedtv.vercel.app/#",
 };
+const WEBSITE_EMOJI = "🌐";
 
 function normalizeHttpUrl(value) {
   if (!value || typeof value !== "string") return null;
@@ -79,7 +80,7 @@ function buildServerAdMessage(config) {
           `${EMOJIS.free} **LurkedTweaks**`,
           "> A free Windows optimizer made to clean up the small annoyances, improve responsiveness, and keep your setup feeling fresh.",
           "",
-          `${EMOJIS.web} **LurkedTV**`,
+          `${WEBSITE_EMOJI} **LurkedTV**`,
           `> Movies and series, free to watch, without turning a simple night into a scavenger hunt: **[Open LurkedTV](${ad.lurkedtv_url})**`,
           "",
           `${EMOJIS.fire} **Join once. Stay because it is useful.**`,
@@ -97,14 +98,14 @@ function buildServerAdMessage(config) {
           inline: false,
         },
         {
-          name: `${EMOJIS.web} __Website__`,
+          name: `${WEBSITE_EMOJI} __Website__`,
           value: `\`\`\`text\n${ad.website_url}\n\`\`\``,
-          inline: true,
+          inline: false,
         },
         {
           name: `${EMOJIS.free} __LurkedTV__`,
           value: `\`\`\`text\n${ad.lurkedtv_url}\n\`\`\``,
-          inline: true,
+          inline: false,
         }
       )
       .setFooter({ text: "LurkedAccounts | Free tools, services, and entertainment" })
@@ -121,7 +122,7 @@ function buildServerAdMessage(config) {
     new ButtonBuilder()
       .setLabel("Website")
       .setStyle(ButtonStyle.Link)
-      .setEmoji(EMOJIS.web)
+      .setEmoji(WEBSITE_EMOJI)
       .setURL(ad.website_url),
     new ButtonBuilder()
       .setLabel("LurkedTV")

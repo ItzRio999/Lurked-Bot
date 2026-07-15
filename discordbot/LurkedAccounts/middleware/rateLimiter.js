@@ -17,10 +17,11 @@ const generalLimiter = rateLimit({
   validate: { trustProxy: false }, // Disable validation since we properly configure trust proxy in index.js
 });
 
-// Strict limiter for authentication endpoints - 5 attempts per 15 minutes
+// Strict limiter for authentication endpoints - 10 failed attempts per 15 minutes
+// (successful requests are skipped; shared IPs behind CGNAT need headroom)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 10,
   message: {
     error: 'Too many authentication attempts, please try again later.',
   },
